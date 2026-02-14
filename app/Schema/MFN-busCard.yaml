@@ -1,0 +1,64 @@
+META-FILE-NODE: BusinessCard_20260121
+
+# Identity
+name: "Business Card"
+# root placement path used to build filepath
+path: "E:\\Reference\\BusinessCards"
+
+# Collection purpose
+description: "Business card scans via dropbox or other, collected in-person or received"
+purpose: "Searchable contact source information. Professional connections, trades and other service providers"
+
+# Schema Definition:
+core_properties:
+  - description
+  - category
+  - contact_name
+  - phone
+  - context_note
+
+optional_properties:
+  - phone-1-800
+  - cell
+  - fax
+  - email
+  - company
+  - location
+  - instagram
+  - url
+  - recommendation
+
+property_descriptions:
+  description: "Brief description of services, products, or what this contact provides"
+  category: "Type of service or business (electrician, lawyer, artist, food sales, etc.)"
+  company: "Company or business name. Could be a non-profit, etc."
+  contact_name: "Name of person on the card"
+  phone: "Business phone number or direct to provider"
+  phone-1-800: "Toll-free number"
+  cell: "Is texting appropriate? Mobile opportunities?"
+  fax: "Fax number. Not likely needed.. just for completeness."
+  email: "Company or individuals formal contact"
+  instagram: "Instagram handle or social media. May start with @"
+  location: "Business address or location"
+  url: "additional web information for company branding"
+  context_note: "My notes on where and how I got the card. Also reminders of meeting importance"
+  recommendation: "recommending person or body" 
+
+
+# Processing Rules
+patterns: '[
+  {"pattern_type": "filename_contains", "pattern_value": "busCard", "confidence": 0.95},
+  {"pattern_type": "filename_contains", "pattern_value": "Buscard", "confidence": 0.95},
+  {"pattern_type": "filename_contains", "pattern_value": "BusCard", "confidence": 0.95},
+  {"pattern_type": "filename_contains", "pattern_value": "busCardish", "confidence": 0.85},
+  {"pattern_type": "file_extension", "pattern_value": ".pdf", "confidence": 0.3}
+]'
+
+
+# other metrics
+user_review_required: true
+relocatable: true 
+review_priority: 5
+remove_source: 
+  value: ask
+  allowed: [move, ask, dup]

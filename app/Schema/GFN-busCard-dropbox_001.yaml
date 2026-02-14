@@ -1,0 +1,352 @@
+# FILE-NODEs were manually created:
+FILE-NODE: busCard-carpentry_20251123
+filepath: 'C:\Users\termi\Dropbox\Contacts\BusinessCards\2025_1123-busCard-carpentry.pdf'
+description: "Example: Carpenter business card - John Smith, met at hardware store for kitchen cabinet work"
+category: "carpentry"
+company: "Smith Carpentry & Renovations"
+contact_name: "John Smith"
+phone: "780-555-1234"
+email: "john@smithcarpentry.com"
+location: "Home Depot - Sherwood Park"
+context_note: "Met at hardware store, recommended for kitchen cabinets"
+
+FILE-NODE: busCard_wills_powerattouney_20240606
+filepath: 'C:\Users\termi\Dropbox\saves\2024_0606-busCard-wills+powerattouney.pdf'
+description: "Lawyer Katherine C. Nunn, wills and power of attorney services"
+category: "lawyer"
+company: "Kate Nunn Law"
+contact_name: "Katherine C. Nunn"
+phone: "780-675-3326"
+email: "katenunnlaw@gmail.com"
+context_notes: "Spoke at Seniors Center Information event"
+tagged_with: []  # No tags yet
+
+FILE-NODE: busCard_dwprod_20240113
+filepath: 'C:\Users\termi\Dropbox\saves\2024_0113-Buscard-DWprod.pdf'
+description: "Technical theatre production business card - Don Waddle, DW Productions"
+category: "technical theatre production"
+company: "DW Productions"
+contact_name: "Don Waddle"
+phone: "780-984-6026"
+email: "iamdw.productions@gmail.com"
+context_notes: "Card:'Mastermind of all things technical theatre'. Met Don at Appleby Soundtech camp. He provided inspiration for involving teens in theater tech positions"
+tagged_with: []  # No tags yet
+
+FILE-NODE: busCard_footcare_20250605
+filepath: 'C:\Users\termi\Dropbox\saves\2025_0605-busCard-foot_care.pdf'
+description: "Local LPN who went into business just prior to meeting me. Deals with Diabetes patients and general foot care."
+category: "Director/Licensed Practical Nurse"
+contact_name: "Shera McConnell, LPN"
+phone: 780-327-9944
+email: "shera@queenbeefootcare.ca"
+location: "#3 5412-50 ave, Athabasca, AB T9S 1L4"
+url: "www.queenbeefootcare.ca"
+context_notes: "Met at Seniors Info Event. Gordon knows her too. Director of her new business. Expensive compared to Government supplied service."
+tagged_with: []  # No tags yet
+
+FILE-NODE: busCard_telustech_20230428
+filepath: 'C:\Users\termi\Dropbox\saves\2023_0428-busCard-telusTech.jpg'
+description: "'Solutions Advisor'. Email is for his manager. I think this is a euphemistic term for telephone technician"
+category: "telephone technician"
+company: Telus
+contact_name: Dylan Baert
+phone: 780-217-7884
+email: "Chris.Chickoski@telus.com" # manager
+url: "telus.com/support" # corporation support helpline
+context_notes: "Met at Seniors Info Event. Gordon knows her too. Director of her new business. Expensive compared to Government supplied service."
+# 310-2255 Not sure what this is, some ID number. Employee?
+tagged_with: []  # No tags yet
+
+FILE-NODE: busCard_telustech_20230428
+filepath: 'C:\Users\termi\Dropbox\Archive\2021-2023\2021_0713-busCard-uHaul-boyle.png'
+description: "U-Haul Neighborhood Dealer. Location is for the Services bay but also the U-Haul yard for vehicle pickup."
+categpry: "rental moving vehicles"
+company: "Keeps Mechanical Services Ltd"
+contact_name: "service_point"
+phone: 825-829-2010
+location: "5201 Railway Ave Boyle, AB TOAOMO"
+context_notes: "This is a screen capture of a web listing. 55 reviews at the time of capture. Hours available"
+tagged_with: []  # No tags yet
+
+FILE-NODE: busCard_canaccord_20210924
+filepath: 'C:\Users\termi\Dropbox\2021_0924-busCard-canaccord.pdf'
+timestamp: 2021-09-24 8:07 AM
+size: 633 KB
+description: "Investment Advisor Canaccord Genuity of Starratt WEALTH MANAGEMENT group"
+category: investment advisor
+company: "Canaccord Genuity Corp."
+contact_name: Jim Hartsook, CFP
+phone: 403-508-3845
+fax: 855-508-3843
+email: jhartsook@cgf.com
+location: "Centennial Place - East Tower, 520 3rd Avenue SW, Suite 2400 Calgary, AB Canada T2P OR3"
+url: cgf.com
+
+FILE-NODE: busCard-eyecare_20230208
+filepath: 'C:\Users\termi\Dropbox\2023_0208-busCard-eyecare.pdf'
+timestamp: 2023-02-08 11:07 AM
+size: 260 KB
+description: prescription eye ware and eye exam services
+category: eyecare specialist
+company: Riverside Eye Care
+contact_name: "Dr. Theresa Checkley"
+phone: 780-675-2749
+fax: 780-675-5304
+email: info@riversideeyecare.ca
+location: 4818-49th Street, Athabasca, AB T9S 1C3
+url: riversideeyecare.ca
+
+FILE-NODE: busCard-metals-terry_20230213
+filepath: 'C:\Users\termi\Dropbox\2023_0213-busCard-metals-terry_001.pdf'
+timestamp: 2023-02-13 9:50 AM
+size: 1,486 KB
+description: "TC Precious Metals Buys Gold & Silver, Salesman and President. Card states: 'unwanted, unused, broken Jewelry, Earrings, Charm Bracelets, Broken Chains, Dental Gold, Sterling Flatware, Canadian Paper Money, Gold Nuggets, Coins Coins Coins'" 
+category: gold purchaser
+company: TC Precious Metals
+contact_name: Terry Burrill
+phone: 1-403-333-9914
+email: tcpmetals@gmail.com
+url: tcpreciousmelals.com
+
+FILE-NODE: busCard-service_20230315
+filepath: 'C:\Users\termi\Dropbox\2023_0315-busCard-service_001.pdf'
+timestamp: 2023-03-15 10:03 PM
+size: 1,258 KB
+description: Used items, bargin store, clothing, thrift store & more
+category: used goods seller
+company: Rhi-Defined New & Used
+contact_name: Justin
+location: 5508 50th Avenue Athabasca AB 780-792-8125
+phone: 780-213-1372
+context_note: Justin and Lorraine and Rhi run this store on the riverfront. Correct their names and fill in contact_names
+
+FILE-NODE: busCard-phil-dube_20231010
+filepath: 'C:\Users\termi\Dropbox\2023_1010-busCard-phil-dube_001.pdf'
+timestamp: 2023-10-10 8:31 PM
+size: 330 KB
+description: "Zone chair, email is Linda and Phil, location is home address. Lions Moto: 'We Serve,... Together we can, Changing the world.'"
+category: community service
+company: Lions Club International
+contact_name: Phil Dube
+phone: 780-675-4132 
+cell: 403-701-8726 
+email: lpdube@telus.net
+location: "#6 5110-48th Ave Athabasca Alberta T9S1T5"
+
+FILE-NODE: busCard-gatewayresale_20231204
+filepath: 'C:\Users\termi\Dropbox\2023_1204-busCard-gatewayResale.pdf'
+timestamp: 2023-12-04 10:13 AM
+size: 411 KB
+description: "Acquisitions Specialist"
+category: car salesman
+company: Gateway Toyota
+contact_name: Marc Gouin
+email: marc@gatewaytoyota.ca
+phone: 780-439-3939
+fax: 780-439-8897
+url: www.gatewaytoyota.ca
+location: "2020 103A Street SW Edmonton, AB T6W 2P6"
+context_note: Met during service. He wanted to buy our used Prius. High demand for this model. New ones very expensive so used are at a premium.
+
+FILE-NODE: busCard-electgasheat_20240114
+filepath: 'C:\Users\termi\Dropbox\2024_0114-busCard-electgasheat.pdf'
+timestamp: 2024-01-14 12:17 PM
+size: 1,404 KB
+description: "location is probably a residence, two phone numbers, likely cell phones"
+category: plumbing
+company: New Pine Creek Electric, Plumbing & Heating
+contact_name: Dan Schooley & Nadine Schooley
+phone: 780-689-9214 & 780-519-0075
+email: newpinecreekplumbing@gmail.com
+location: PO Box 7, Colinton, AB TOG ORO
+context_note: "Replaced light fixtures at AUC with LED. Did a poor job at Seniors center plumbing. Did not get bid for furnace replacement due to low detail quote."
+
+FILE-NODE: busCard-stucco_20240827
+filepath: 'C:\Users\termi\Dropbox\2024_0827-busCard-Stucco.pdf'
+timestamp: 2024-08-27 10:16 AM
+size: 430 KB
+description: "Concrete & Styrofoam Pargings, All Stone & Brickwork, Stucco, Rockwork & Masonry
+category: masonry
+company: BBS Stucco Ltd.
+contact_name: Gerry Breukelman
+phone: 780-674-4502
+cell: 780-674-7307
+fax: 780-674-4534
+email: gkbre1@xplornet.com
+url: "https://bbsstucco.ca/"
+location: "4233 Township Road 614, Neerlandia, Alberta  T0G 1R1"
+
+FILE-NODE: busCard-youthgroupidea_20240901
+filepath: 'C:\Users\termi\Dropbox\2024_0901-busCard-youthGroup_idea.pdf'
+timestamp: 2024-09-15 1:43 PM
+size: 1,169 KB
+decription: Indigenous Art - Metal Art, Amy Keller-Rempp - Artist, Antoine Rempp - Manager, facebook - KellerRemppart
+category: metal artist
+company: Keller Rempp Art Inc.
+contact_name: Amy Keller
+phone: 780-838-0727
+email: artist@amykeller.com
+url: www.AmyKeller.com
+context_note: "Met at farmers market? Don't remember how this relates to youth group or what the idea mentioned in the current file name is about."
+
+FILE-NODE: busCard-lionsleduc_20241116
+filepath: 'C:\Users\termi\Dropbox\2024_1116-Buscard-lions-leduc.pdf'
+timestamp: 2024-11-16 5:14 PM
+size: 446 KB
+description: "Leduc chapter - GMT District C1, Logo: GLOBAL ACTION TEAM LEADERSHIP MEMBERSHIP SERVICE"
+category: community service
+company: Lions Club International 
+contact_name: Walter Calahaisn
+cell: 780-237-5555
+email: walter.c@shaw.ca
+context_note: "met Walter and District Govenor at Fort Mac Lions club. Had stimulating breakfast conversation. ... They don't remember it though"
+
+FILE-NODE: busCard-art-alia_20241213
+filepath: 'C:\Users\termi\Dropbox\2024_1213-busCard-art-Alia.pdf'
+timestamp: 2024-12-13 12:54 PM
+size: 184 KB
+description: "Nature artist. moto: Nature and Humanity in Harmony, "
+category: nature artist
+contact_name: Alia AliaSchamehornArt
+phone: <not available>
+instagram: "@AliaSchamehornArt"
+url: aliaschamehornart.blogspot.com
+context_note: "Alia and Richard go married in AUC. Alia had a panic attack and did not come to her own wedding. She had loads of fun planning it though."
+
+FILE-NODE: busCard-nuts_20241229
+filepath: 'C:\Users\termi\Dropbox\2024_1229-busCard-nuts.pdf'
+timestamp: 2024-12-29 3:46 PM
+size: 942 KB
+description: "Fresh Daily Roasted Nuts - Coffee - Spices - Grocery items - sweets - chocolates, 30 Years Experience"
+category: food sales
+company: Fresh Nuts
+contact_name: <not available>
+phone: 587-708-6646
+location: "12522-132 Ave NW, Edmonton, AB T5L-3P9 in Kensington Centre"
+context_note: "I think the card came from a gift from Amber. Saved info as it was tasty"
+
+FILE-NODE: busCard-foodequip_20241022
+filepath: 'C:\Users\termi\Dropbox\2024-1022-busCard-foodequip.pdf'
+timestamp: 2024-10-22 11:33 AM
+size: 339 KB
+description: Restaurant supply store with pots, glassware, restaurant kitchen equipment, etc.
+company: Russell Hendrix
+contact_name: Ryan Delwood 
+category: food equipment sales
+email: rdelwood@russellhendrix.com
+phone: 780-545-9153
+location: 11925-145 Street NW Edmonton, AB T5L 2H4
+url: russellhendrix.com
+context_note: Amber used to work here. Ryan comes to Athabasca sometimes. Met at the Seniors Centre. Purchased coffee pots here.
+
+FILE-NODE: busCard-whma-sound_20240225
+filepath: 'C:\Users\termi\Dropbox\2025_0225-busCard-whma-sound-1.pdf'
+timestamp: 2025-02-25 11:45 AM
+size: 274 KB
+description: Sound System for Live Performances Call for details
+category: sound technician
+company: Whispering Hills Music Association
+contact_name: George & Brenda Sound
+phone: "780-689-7368 & 780-270-0437"
+
+FILE-NODE: busCard-dietician_20250320
+filepath: 'C:\Users\termi\Dropbox\2025_0320-busCard-dietician-1.pdf'
+timestamp: 2025-03-20 2:36 PM
+size: 133 KB
+description: Registered Dietitian
+category: Dietitian
+company: Alberta Health Services
+contact_name: Maryam Ma, B.SC, RD
+phone: 780-675-2235 ext. 225
+fax: 780-675-3111
+email: maryam.ma@ahs.ca
+location: Athabasca Community Health Services, 3401 48 Avenue, Athabasca, Alberta T9S 1M7
+context_note: "Referred to by Dr. Adi for nutrition help. Advised Siggi's yogurt for protein"
+
+FILE-NODE: busCard-gingras_20250414
+filepath: 'C:\Users\termi\Dropbox\2025_0414-BusCard-Gingras.pdf'
+timestamp: 2025-04-14 12:06 PM
+size: 190 KB
+description: Electrical work. 
+category: electrician
+contact_name: Alain Gingras
+phone: 780-881-0573
+context_note: Hand written note. Not sure where I met Alain.
+
+FILE-NODE: busCard-microphone_20250725
+filepath: 'C:\Users\termi\2025_0725-busCard-microphone.pdf'
+timestamp: 2025-07-25 4:49 PM
+size: 604 KB
+description: "This company sells everything related to music production. Instruments, equipment, amps, music, etc."
+category: musician product sales
+company: Long & McQuade
+contact_name: Cory Muir
+phone: 780-432-0102
+email: cmuir@long-mcquade.com
+location: 9219 28 Avenue NW Edmonton, AB T6N 1N1
+url: long-mcquade.com
+context_note: "this salesman specializes in equipment sales. I was specifically interested in a condenser microphone."
+
+FILE-NODE: busCard-employment-serv_20250916
+filepath: 'C:\Users\termi\Dropbox\2025_0916-busCard-EmploymentServ.pdf'
+timestamp: 2025-09-16 3:08 PM
+size: 113 KB
+description: Employment agency that helps Athabascans get work. 
+category: employment services
+contact_name: Nadine Byers
+phone: 780-609-0660
+email: nadine@abwes.com
+context_note: She helped me get employed at the Seniors Centre. See phone contact list for full contact info. Not an actual card.
+
+FILE-NODE: busCard-tlus_20251024
+filepath: 'C:\Users\termi\2025_1024-BusCard-TLUS.pdf'
+timestamp: 2025-10-24 8:19 PM
+size: 247 KB
+description: Digital Content Strategist Communications Unit, TLUS is Then Let Us Sing, the new hymn book Monica helped with. 
+category: digital media expert
+company: The United Church of Canada
+contact_name: Aaron Gallegos
+phone-1-800: 1-800-268-3781 ext. 3117
+phone: 416-231-7680 ext. 3117
+email: agallegos@united-church.ca
+location: 3250 Bloor St. West, Suite 200 Toronto, ON M8X 2Y4
+url: www.united-church.ca
+context_note: File name hint is TLUS. We met at the celebration of successfully completing TLUS. Touring Ottawa.
+
+FILE-NODE: busCard-storage_20251030
+filepath: 'C:\Users\termi\2025_1030-busCardish-storage.pdf'
+timestamp: 2025-10-30 11:49 AM
+size: 614 KB
+description: Searching for name of company. On the riverfront. completed late 2025. Not on google streetview.
+company: <not sure>
+category: storage
+phone: 780-213-2666
+context_note: Not actually a card, a picture of a sign. Wanted to quickly grab the phone number in case we needed Athabasca storage
+
+FILE-NODE: busCard-mentalhealth-fort-mac_20251204
+filepath: 'C:\Users\termi\Dropbox\2025_1204-busCard-mentalhealth-FortMac.pdf'
+timestamp: 2025-12-04 12:46 PM
+size: 304 KB
+description: "Mental Health Counsellor. Society for crisis prevention, Moto: 'Building Strong Communities'"
+category: guidance councilor
+company: Some Other Solutions
+contact_name: Paula Caines, MA, RSW
+phone: 780-750-8663
+email: paula.caines@someothersolutions.ca
+location: 202A-8706 Franklin Avenue Fort McMurray, AB T9H2J6
+url: www.someothersolutions.ca
+context_note: Found a small strip mall storefront in downtown Fort Mac. Asked some questions about placement and services provided
+
+FILE-NODE: busCard-soundschool_20250531
+filepath: 'C:\Users\termi\2025_0531-busCard-soundSchool.pdf'
+timestamp: 2025-05-31 12:17 PM
+size: 1,337 KB
+description: YouTube Channel is mel gargu, 'Video / Audio Services'
+category: sound technician
+company: Premier Recordings
+contact_name: Mel Gargus
+phone: 780-665-4945
+cell: 780-886-9841
+email: melgargus3@gmail.com
+location: "Tower I - Suite 2020, 10060 Jasper Ave, Edmonton, AB T5J 3R8"
+context_note: Probably met Mel at the sound school at the Appleby. Apparently used to work for CBC. Freelancer technician. His YouTube is trash. Music too. 

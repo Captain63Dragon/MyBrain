@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Actions Controls Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th {
+            background: #f0f0f0;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr.pristine {
+            background: white;
+        }
+
+        tr.dirty {
+            background: #e3f2fd; /* Light blue pastel */
+        }
+
+        tr:hover {
+            background: #f8f8f8;
+        }
+
+        tr.dirty:hover {
+            background: #d1e7fd;
+        }
+
+        .select-col {
+            width: 40px;
+            text-align: center;
+        }
+
+        /* Bulk Actions Bar */
+        .bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        #selection-count {
+            font-weight: 600;
+            color: #555;
+            margin-right: auto;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #f0f0f0;
+            border-color: #999;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .danger-btn {
+            background: #ffebee;
+            border-color: #ef5350;
+            color: #c62828;
+        }
+
+        .danger-btn:hover:not(:disabled) {
+            background: #ef5350;
+            color: white;
+        }
+
+        select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Demo controls */
+        .demo-controls {
+            margin-top: 20px;
+            padding: 16px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+        }
+
+        .demo-controls h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+
+        .demo-controls button {
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .log {
+            margin-top: 20px;
+            padding: 12px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            color: #495057;
+        }
+
+        .log-entry.action {
+            color: #0066cc;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Bulk Actions Controls Demo</h2>
+        
+        <!-- Bulk Actions Bar -->
+        <div class="bulk-actions">
+            <span id="selection-count">0 selected</span>
+            
+            <button id="delete-selected" disabled class="danger-btn">Delete</button>
+            
+            <select id="bulk-action-select">
+                <option value="">Bulk Actions...</option>
+                <option value="commit">Commit Changes</option>
+                <option value="move">Move Files</option>
+                <!-- <option value="export">Export to CSV</option> -->
+            </select>
+            
+            <button id="execute-action" disabled>Execute Action</button>
+        </div>
+
+        <!-- Sample Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th class="select-col"><input type="checkbox" id="select-all"></th>
+                    <th>Record ID</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="records-tbody">
+                <tr class="pristine" data-id="record-1">
+                    <td class="select-col"><input type="checkbox" class="record-checkbox"></td>
+                    <td>busCard_legal_001</td>
+                    <td>John Doe</td>
+                    <td>Legal</td>
+                    <td>Pristine</td>
+                </tr>
+                <tr class="dirty" data-id="record-2">
+                    <td class="select-col"><input type="checkbox" class="record-checkbox"></td>
+                    <td>busCard_medical_002</td>
+                    <td>Jane Smith</td>
+                    <td>Medical</td>
+                    <td>Edited</td>
+                </tr>
+                <tr class="pristine" data-id="record-3">
+                    <td class="select-col"><input type="checkbox" class="record-checkbox"></td>
+                    <td>busCard_tech_003</td>
+                    <td>Bob Johnson</td>
+                    <td>Technology</td>
+                    <td>Pristine</td>
+                </tr>
+                <tr class="dirty" data-id="record-4">
+                    <td class="select-col"><input type="checkbox" class="record-checkbox"></td>
+                    <td>busCard_finance_004</td>
+                    <td>Alice Brown</td>
+                    <td>Finance</td>
+                    <td>Edited</td>
+                </tr>
+                <tr class="pristine" data-id="record-5">
+                    <td class="select-col"><input type="checkbox" class="record-checkbox"></td>
+                    <td>busCard_construction_005</td>
+                    <td>Charlie Davis</td>
+                    <td>Construction</td>
+                    <td>Pristine</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Demo Controls -->
+        <div class="demo-controls">
+            <h3>Demo Controls (Toggle dirty state):</h3>
+            <button onclick="toggleDirty('record-1')">Toggle Record 1</button>
+            <button onclick="toggleDirty('record-2')">Toggle Record 2</button>
+            <button onclick="toggleDirty('record-3')">Toggle Record 3</button>
+            <button onclick="toggleDirty('record-4')">Toggle Record 4</button>
+            <button onclick="toggleDirty('record-5')">Toggle Record 5</button>
+        </div>
+
+        <!-- Action Log -->
+        <div class="log" id="action-log">
+            <div class="log-entry">Action log will appear here...</div>
+        </div>
+    </div>
+
+    <script>
+        // State tracking
+        const dirtyRecords = new Set(['record-2', 'record-4']);
+
+        // DOM elements
+        const actionSelect = document.getElementById('bulk-action-select');
+        const executeBtn = document.getElementById('execute-action');
+        const deleteBtn = document.getElementById('delete-selected');
+        const selectionCount = document.getElementById('selection-count');
+        const selectAllCheckbox = document.getElementById('select-all');
+        const recordCheckboxes = document.querySelectorAll('.record-checkbox');
+        const actionLog = document.getElementById('action-log');
+
+        // Update bulk action controls based on selection
+        function updateBulkActions() {
+            const checkedCount = getCheckedCount();
+            const dirtyCheckedCount = getCheckedDirtyCount();
+            
+            // Update selection count
+            if (checkedCount === 0) {
+                selectionCount.textContent = '0 selected';
+            } else {
+                selectionCount.textContent = `${checkedCount} selected${dirtyCheckedCount > 0 ? ` (${dirtyCheckedCount} edited)` : ''}`;
+            }
+            
+            // Enable/disable buttons
+            deleteBtn.disabled = checkedCount === 0;
+            executeBtn.disabled = !actionSelect.value || checkedCount === 0;
+        }
+
+        // Get count of checked checkboxes
+        function getCheckedCount() {
+            return Array.from(recordCheckboxes).filter(cb => cb.checked).length;
+        }
+
+        // Get count of checked dirty records
+        function getCheckedDirtyCount() {
+            let count = 0;
+            recordCheckboxes.forEach(cb => {
+                if (cb.checked) {
+                    const row = cb.closest('tr');
+                    const recordId = row.dataset.id;
+                    if (dirtyRecords.has(recordId)) {
+                        count++;
+                    }
+                }
+            });
+            return count;
+        }
+
+        // Get selected record IDs
+        function getSelectedRecordIds() {
+            const selected = [];
+            recordCheckboxes.forEach(cb => {
+                if (cb.checked) {
+                    const row = cb.closest('tr');
+                    selected.push(row.dataset.id);
+                }
+            });
+            return selected;
+        }
+
+        // Log action
+        function logAction(message, isAction = false) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry' + (isAction ? ' action' : '');
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            actionLog.appendChild(entry);
+            actionLog.scrollTop = actionLog.scrollHeight;
+        }
+
+        // Toggle dirty state (demo function)
+        function toggleDirty(recordId) {
+            const row = document.querySelector(`tr[data-id="${recordId}"]`);
+            const statusCell = row.querySelector('td:last-child');
+            
+            if (dirtyRecords.has(recordId)) {
+                dirtyRecords.delete(recordId);
+                row.classList.remove('dirty');
+                row.classList.add('pristine');
+                statusCell.textContent = 'Pristine';
+                logAction(`${recordId} marked as pristine`);
+            } else {
+                dirtyRecords.add(recordId);
+                row.classList.remove('pristine');
+                row.classList.add('dirty');
+                statusCell.textContent = 'Edited';
+                logAction(`${recordId} marked as edited`);
+            }
+            
+            updateBulkActions();
+        }
+
+        // Event Listeners
+        recordCheckboxes.forEach(cb => {
+            cb.addEventListener('change', updateBulkActions);
+        });
+
+        selectAllCheckbox.addEventListener('change', (e) => {
+            recordCheckboxes.forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+            updateBulkActions();
+            logAction(`Select all: ${e.target.checked ? 'checked' : 'unchecked'}`);
+        });
+
+        actionSelect.addEventListener('change', () => {
+            updateBulkActions();
+            if (actionSelect.value) {
+                logAction(`Action selected: ${actionSelect.value}`);
+            }
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            const selected = getSelectedRecordIds();
+            logAction(`DELETE clicked for: ${selected.join(', ')}`, true);
+            
+            // Simulate deletion
+            if (confirm(`Delete ${selected.length} record(s)?`)) {
+                selected.forEach(id => {
+                    const row = document.querySelector(`tr[data-id="${id}"]`);
+                    row.style.opacity = '0.3';
+                    setTimeout(() => {
+                        row.remove();
+                        dirtyRecords.delete(id);
+                    }, 300);
+                });
+                logAction(`Deleted ${selected.length} record(s)`, true);
+                
+                // Uncheck select-all
+                selectAllCheckbox.checked = false;
+                updateBulkActions();
+            }
+        });
+
+        executeBtn.addEventListener('click', () => {
+            const action = actionSelect.value;
+            const selected = getSelectedRecordIds();
+            
+            logAction(`EXECUTE "${action}" for: ${selected.join(', ')}`, true);
+            
+            switch(action) {
+                case 'commit':
+                    // Only commit dirty records
+                    const dirtySelected = selected.filter(id => dirtyRecords.has(id));
+                    logAction(`Committing ${dirtySelected.length} dirty record(s)`, true);
+                    
+                    dirtySelected.forEach(id => {
+                        const row = document.querySelector(`tr[data-id="${id}"]`);
+                        row.classList.remove('dirty');
+                        row.classList.add('pristine');
+                        row.querySelector('td:last-child').textContent = 'Pristine';
+                        dirtyRecords.delete(id);
+                    });
+                    break;
+                    
+                case 'move':
+                    logAction(`Moving files for ${selected.length} record(s)`, true);
+                    alert(`Would open file move dialog for ${selected.length} records`);
+                    break;
+                    
+                case 'export':
+                    logAction(`Exporting ${selected.length} record(s) to CSV`, true);
+                    alert(`Would export ${selected.length} records to CSV`);
+                    break;
+            }
+            
+            // Reset action select and uncheck boxes
+            actionSelect.value = '';
+            recordCheckboxes.forEach(cb => cb.checked = false);
+            selectAllCheckbox.checked = false;
+            updateBulkActions();
+        });
+
+        // Initialize
+        updateBulkActions();
+        logAction('Demo initialized - try selecting records and actions!');
+    </script>
+</body>
+</html>
+
+
+<!-- Add root path to the bulk bar -->
+ <div class="bulk-actions">
+    <span id="selection-count">0 selected</span>
+    
+    <button id="delete-selected" disabled class="danger-btn">Delete</button>
+    
+    <select id="bulk-action-select">
+        <option value="">Bulk Actions...</option>
+        <option value="commit">Commit Changes</option>
+        <option value="move">Move Files</option>
+        <option value="export">Export to CSV</option>
+    </select>
+    
+    <button id="execute-action" disabled>Execute Action</button>
+    
+    <span id="root-path-display" class="root-path" title=""></span>
+</div>

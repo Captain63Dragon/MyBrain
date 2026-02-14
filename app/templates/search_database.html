@@ -1,0 +1,29 @@
+<div class="content" id="right-content" style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h1 style="margin-bottom: 10px;">Search Database</h1>
+    <p style="color: #7f8c8d; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #ecf0f1;">
+        Search for the next action in the database
+    </p>
+
+    <form id="searchForm">
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500;">Entity ID</label>
+            <input type="text" name="entity_id" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500;">Action Type</label>
+            <select name="action_type" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">-- Select --</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="scheduled">Scheduled</option>
+            </select>
+        </div>
+
+        <button type="submit" style="background: #3498db; color: white; padding: 12px 30px; border: none; border-radius: 4px; cursor: pointer;">
+            Search
+        </button>
+        <div id="message" style="margin-top: 20px; padding: 15px; border-radius: 4px; display: none;"></div>
+    </form>
+    <script src="{{ url_for('static', filename='js/search_database.js') }}"></script>
+</div>

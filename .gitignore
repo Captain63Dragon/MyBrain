@@ -1,0 +1,15 @@
+node_modules/
+__pycache__/
+venv/
+.git/
+.eslintrc.json
+.env
+.DS_Store
+*.log
+myStructure.txt
+*Experiment*
+sampleStructure.yaml
+junk.js
+2024_0709-data*.txt
+1402_1010-ancient-document.txt
+run.bat

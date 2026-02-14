@@ -1,0 +1,37 @@
+proposed project map
+myBrain-2026/
+├── app/
+│   ├── __init__.py                    # Flask app factory
+│   ├── routes/                        # Flask convention
+│   │   ├── __init__.py
+│   │   ├── buscard_routes.py          # Business card endpoints
+│   ├── templates/                     # Flask convention
+│   │   ├── base.html
+│   │   ├── buscards/
+│   │   │   ├── list.html              # Show all cards
+│   │   │   ├── preview.html           # Pre-upload preview
+│   │   │   └── edit.html              # Edit form
+│   ├── static/                        # Flask convention
+|   ├── scripts/                       # CLI for quick processing or one-off testing
+│   │   ├── css/
+│   │   │   └── style.css
+│   │   ├── js/
+│   │   │   └── app.js
+│   │   └── images/
+│   ├── services/                      # Your business logic
+│   │   ├── __init__.py
+│   │   ├── schema_service.py          # load_mfn, parse_gfn
+│   │   ├── node_mapper.py             # map_properties
+│   │   ├── neo4j_service.py           # create_nodes, ensure_constraint
+│   │   └── display_service.py         # Prepare nodes for templates
+│   ├── Schema/                        # Your domain data
+│   │   ├── MFN-busCard.yaml
+│   │   ├── GFN-busCard-dropbox_001.yaml
+│   └── models/                        # Optional: Python classes
+│       └── neo4j_connection.py        # Your neo4j_conn setup
+├── tests/
+│   ├── test_schema_service.py
+│   └── test_neo4j_service.py
+├── run.py                             # Application entry point
+├── config.py                          # Configuration
+└── requirements.txt

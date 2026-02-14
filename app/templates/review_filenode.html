@@ -1,0 +1,141 @@
+<div class="content" id="right-content" style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h1 style="margin-bottom: 10px;">Review FileNode</h1>
+    <p style="color: #7f8c8d; margin-bottom: 20px;">
+        Review and analyze filenode property data
+    </p>
+
+    <!-- Tabs -->
+    <div class="tabbed-headers" style="border-bottom: 2px solid #ecf0f1; margin-bottom: 20px;">
+        <button class="tab-btn active" data-tab="query">Query</button>
+        <button class="tab-btn hidden" data-tab="list">Node List</button>
+        <button class="tab-btn hidden" data-tab="update">Review</button>
+        <button class="tab-btn" data-tab="results">Results</button>
+    </div>
+
+    <!-- Query Tab -->
+    <div class="tab-content">
+        <div class="tab-pane active" id="query-pane">
+            <div class="query-form">
+                <form id="filenodeForm">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Node Path</label>
+                        <input type="text" name="node_path" placeholder="/path/to/node" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Property Filter</label>
+                        <input type="text" name="property_filter" placeholder="property_name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+    
+                    <label style="display: flex; align-items: center; margin-bottom: 20px;">
+                        <input type="checkbox" name="include_metadata" style="margin-right: 8px;">
+                        Include metadata
+                    </label>
+    
+                    <button type="submit" style="background: #3498db; color: white; padding: 12px 30px; border: none; border-radius: 4px; cursor: pointer;">
+                        Query Node
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- List Tab-->
+    <div class="tab-content">
+        <div class="tab-pane hidden" id="list-pane">
+            <div class="list">
+                <!-- Bulk Actions Bar -->
+                <div class="bulk-actions">
+                    <span id="selection-count">0 selected</span>
+                    <button id="delete-selected" disabled class="danger-btn">Delete</button>
+                    <select id="bulk-action-select">
+                        <option value="">Bulk Actions...</option>
+                        <option value="commit">Commit Changes</option>
+                        <option value="move">Move Files</option>
+                        <!-- <option value="export">Export to CSV</option> -->
+                    </select>
+                    <button id="execute-action" disabled>Execute Action</button>
+                    <span id="root-path-display" class="root-path">&lt;root path&gt;</span>
+                    
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="select-col"><input type="checkbox" id="select-all"></th>
+                            <th>Node</th>
+                            <th>Category</th>
+                            <th>Contact</th>
+                            <th>Phone</th>
+                            <th>Cell</th>
+                            <th>Description</th>
+                            <th>Location</th>
+                        </tr>
+                    </thead>
+                    <tbody id="search-path-rows">
+                        <!-- this will be replaced before display. Placeholder-->
+                        <tr><td colspan="8">No results to show</td></tr> 
+                    </tbody>
+                </table>
+                <div style="margin-top: 20px;">
+                    <button style="padding: 8px 16px;">Edit Selected</button>
+                    <button style="padding: 8px 16px; margin-left: 10px;">Delete Selected</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Update Tab-->
+    <div class="tab-content">
+        <div class="tab-pane hidden" id="update-pane">
+            <div class="sub-tabs">
+                <button class="sub-tab-btn active" data-record="record1">Record 1</button>
+                <button class="sub-tab-btn" data-record="record2">Record 2</button>
+            </div>
+            <div id="record1" class="sub-tab-content active">
+                <form class="record-form">
+                    <div class="form-group">
+                        <label for="node1">Node ID:</label>
+                        <input type="text" id="node1" name="node1" value="busCard_wills_powerattorney_20240606" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="category1">Category:</label>
+                        <input type="text" id="category1" name="category1" value="Legal">
+                    </div>
+                    <div class="form-group">
+                        <label for="contact1">Contact Name:</label>
+                        <input type="text" id="contact1" name="contact1" value="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone1">Phone:</label>
+                        <input type="text" id="phone1" name="phone1" value="780-555-1234">
+                    </div>
+                    <div class="form-group">
+                        <label for="cell1">Cell:</label>
+                        <input type="text" id="cell1" name="cell1" value="780-555-5678">
+                    </div>
+                    <div class="form-group">
+                        <label for="description1">Description:</label>
+                        <textarea id="description1" name="description1">This is a long description that will get truncated at some point when it exceeds the maximum width allowed in the table</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="location1">Location:</label>
+                        <input type="text" id="location1" name="location1" value="legal\wills_powerattorney.pdf" readonly>
+                    </div>                    
+                    <div class="form-actions">
+                        <button class="btn btn-primary">Save Changes</button>
+                        <button class="btn btn-secondary">Reset</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Results Tab -->
+    <div class="tab-content">
+        <div class="tab-pane" id="results-pane" style="display: none;">
+            <div id="resultsForm">
+                <div id="results" style="background: #f8f9fa; padding: 20px; border-radius: 4px; font-family: monospace; min-height: 200px;">
+                    <p style="color: #6c757d;">No results yet. Run a query to see data here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

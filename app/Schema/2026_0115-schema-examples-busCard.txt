@@ -1,0 +1,349 @@
+Example META-NODE: Business Cards
+
+yaml
+META-NODE: BusinessCards
+
+# Identity
+name: "Business Cards"
+path: "C:\Users\termi\Dropbox\Contacts\BusinessCards"
+
+# Purpose
+description: "Contact information from business cards collected in-person or received"
+purpose: "Maintain searchable contact database for professional connections, tradespeople, and service providers"
+
+# Schema Definition
+suggested_properties:
+  - contact_name
+  - company
+  - phone
+  - email
+  - trade_specialty
+  - context
+  - met_date
+  - met_location
+
+property_descriptions:
+  contact_name: "Full name of the person on the business card"
+  company: "Company or business name"
+  phone: "Primary phone number"
+  email: "Email address"
+  trade_specialty: "Type of work they do (carpentry, plumbing, electrical, etc.)"
+  context: "How/why you met them, what they were recommended for"
+  met_date: "When you received the card or met the person"
+  met_location: "Where you met them (hardware store, job site, referral, etc.)"
+
+required_properties:
+  - contact_name
+  - phone
+
+# Processing Rules
+patterns:
+  - pattern_type: "filename_contains"
+    pattern_value: "busCard"
+    confidence: 0.95
+  
+  - pattern_type: "filename_contains"
+    pattern_value: "businessCard"
+    confidence: 0.95
+  
+  - pattern_type: "file_extension"
+    pattern_value: ".pdf"
+    confidence: 0.3
+    # Low confidence - many PDFs aren't business cards
+
+ocr_extract: true
+user_review_required: true
+priority: 5  # Higher priority than generic "Documents"
+
+# Relationships
+parent_meta_node: "Contacts"  # Part of broader Contacts category
+similar_categories: 
+  - "Contacts-Email"
+  - "Contacts-Phone"
+
+# Examples
+example_files:
+  - "2025_1123-busCard-carpentry.pdf"
+  - "2025_0916-busCard-EmploymentServ.pdf"
+  - "2021-0713-busCard-uHaul-boyle.png"
+
+What happens with this META-NODE:
+File: 2025_1123-busCard-carpentry.pdf
+
+Pattern matching: "busCard" in filename → confidence 0.95 → strong match
+OCR runs: Extracts text from PDF
+System suggests:
+
+contact_name: "John Smith" (from OCR)
+company: "Smith Carpentry & Renovations" (from OCR)
+phone: "780-555-1234" (from OCR)
+email: "john@smithcarpentry.com" (from OCR)
+trade_specialty: "carpentry" (from filename)
+met_date: "2025-11-23" (from filename)
+context: "" (empty - needs user input)
+met_location: "" (empty - needs user input)
+
+
+User reviews and fills in:
+
+Confirms all OCR extractions
+Adds context: "Met at hardware store, recommended for kitchen cabinets"
+Adds met_location: "Home Depot - Sherwood Park"
+
+
+FILE-NODE created with:
+
+filepath: "C:\Users\termi\Dropbox\Contacts\BusinessCards\2025_1123-busCard-carpentry.pdf"
+description: "Carpenter business card - John Smith, met at hardware store for kitchen cabinet work"
+contact_name: "John Smith"
+company: "Smith Carpentry & Renovations"
+phone: "780-555-1234"
+email: "john@smithcarpentry.com"
+trade_specialty: "carpentry"
+context: "Met at hardware store, recommended for kitchen cabinets"
+met_date: "2025-11-23"
+met_location: "Home Depot - Sherwood Park"
+review_status: "reviewed"
+
+
+
+Does this example capture what you're envisioning?Yes. Very nice. I could ask for code to convert YAML to Cypher. That is what we are wanting here so this can be an actual Neo4j node, right? What would be the generated Cypher from this code if we had written it?5:07 PMYes, exactly! The YAML would be converted to Cypher to create the actual Neo4j node.
+Here's what the Cypher would look like:
+
+cypher// Create the BusinessCards META-NODE
+CREATE (m:MetaFileNode {
+  name: "Business Cards",
+  path: "C:\\Users\\termi\\Dropbox\\Contacts\\BusinessCards",
+  description: "Contact information from business cards collected in-person or received",
+  purpose: "Maintain searchable contact database for professional connections, tradespeople, and service providers",
+  
+  // Schema definition stored as JSON or lists
+  core_properties: ["description", "category", "contact_name", "phone", "context_notes"],
+  optional_properties: ["phone-1-800", "cell", "fax", "email", "company", "location", "instagram", "url", "recommendation"],
+  
+  property_descriptions: '{
+    "description": "Brief description of services, products, or what this contact provides",
+    "category": "Type of service or business (electrician, lawyer, artist, food sales, etc.)",
+    "contact_name": "Full name of the person on the business card",
+    "phone": "Primary phone number",
+    "context_notes": "How you met them, why you have their card, relationship context, any relevant notes",
+    "phone-1-800": "Toll-free number",
+    "cell": "Cell phone number (if different from primary)",
+    "fax": "Fax number",
+    "email": "Email address",
+    "company": "Company or business name",
+    "location": "Business address or location",
+    "instagram": "Instagram handle or social media",
+    "url": "Website URL",
+    "recommendation": "Whether you would recommend them, quality of work/service notes"
+  }',
+  
+    patterns: '[
+    {"pattern_type": "filename_contains", "pattern_value": "busCard", "confidence": 0.95},
+    {"pattern_type": "filename_contains", "pattern_value": "Buscard", "confidence": 0.95},
+    {"pattern_type": "filename_contains", "pattern_value": "BusCard", "confidence": 0.95},
+    {"pattern_type": "filename_contains", "pattern_value": "busCardish", "confidence": 0.85},
+    {"pattern_type": "file_extension", "pattern_value": ".pdf", "confidence": 0.3}
+  ]',
+  
+  ocr_extract: true,
+  user_review_required: true,
+  priority: 5,
+
+  parent_meta_node: "Contacts"
+})
+
+Alternative approach - storing patterns inline:
+cypher// Simpler version with patterns as JSON property
+CREATE (m:MetaNode {
+  name: "Business Cards",
+  path: "C:\\Users\\termi\\Dropbox\\Contacts\\BusinessCards",
+  description: "Contact information from business cards collected in-person or received",
+  purpose: "Maintain searchable contact database for professional connections, tradespeople, and service providers",
+  
+  suggested_properties: ["contact_name", "company", "phone", "email", "trade_specialty", "context", "met_date", "met_location"],
+  required_properties: ["contact_name", "phone"],
+  
+  patterns: '[
+    {"pattern_type": "filename_contains", "pattern_value": "busCard", "confidence": 0.95},
+    {"pattern_type": "filename_contains", "pattern_value": "businessCard", "confidence": 0.95},
+    {"pattern_type": "file_extension", "pattern_value": ".pdf", "confidence": 0.3}
+  ]',
+  
+  ocr_extract: true,
+  user_review_required: true,
+  priority: 5
+})
+Which approach do you prefer?
+
+Separate Pattern nodes: More graph-native, easier to query patterns across META-NODEs, can track pattern effectiveness
+Inline JSON: Simpler, fewer nodes, easier to create/update
+Correct me if I am wrong, the json version mean we can use the extracted patterns to actually parse programmatically, no?5:08 PMYes, exactly! With the JSON version, you can:
+pythonimport json
+
+# Query Neo4j for the META-NODE
+result = session.run("MATCH (m:MetaNode {name: 'Business Cards'}) RETURN m")
+meta_node = result.single()['m']
+
+# Extract and parse the patterns JSON
+patterns_json = meta_node['patterns']
+patterns = json.loads(patterns_json)
+
+# Now iterate and use them programmatically
+for pattern in patterns:
+    pattern_type = pattern['pattern_type']
+    pattern_value = pattern['pattern_value']
+    confidence = pattern['confidence']
+    
+    # Use in matching logic
+    if pattern_type == "filename_contains":
+        if pattern_value in filename:
+            # This file matches with this confidence
+            match_score = confidence
+With separate Pattern nodes, you'd need additional queries:
+python# Query for patterns
+result = session.run("""
+    MATCH (m:MetaNode {name: 'Business Cards'})-[:MATCHES_PATTERN]->(p:Pattern)
+    RETURN p
+""")
+
+patterns = [record['p'] for record in result]
+
+# Then iterate
+for pattern in patterns:
+    pattern_type = pattern['pattern_type']
+    # ... same logic
+So JSON version is:
+
+Single query to get everything
+Direct parsing with json.loads()
+Simpler code for matching logic
+
+But separate nodes give you:
+
+Reusable patterns across multiple META-NODEs
+Pattern analytics - "which patterns are most effective?"
+Easy updates - modify one Pattern node, affects all META-NODEs using it
+
+For your use case (single user, focused workflow), JSON is probably simpler. Want to go with that approach?Yes.5:09 PMPerfect. JSON it is.
+So our META-NODE structure in Neo4j will be:
+cypherCREATE (m:MetaNode {
+  name: "Business Cards",
+  path: "C:\\Users\\termi\\Dropbox\\Contacts\\BusinessCards",
+  description: "Contact information from business cards collected in-person or received",
+  purpose: "Maintain searchable contact database for professional connections, tradespeople, and service providers",
+  
+  // Arrays stored directly (Neo4j supports list properties)
+  suggested_properties: ["contact_name", "company", "phone", "email", "trade_specialty", "context", "met_date", "met_location"],
+  required_properties: ["contact_name", "phone"],
+  
+  // Complex nested data as JSON strings
+  property_descriptions: '{"contact_name": "Full name of the person on the business card", "company": "Company or business name", ...}',
+  
+  patterns: '[{"pattern_type": "filename_contains", "pattern_value": "busCard", "confidence": 0.95}, ...]',
+  
+  // Simple properties
+  ocr_extract: true,
+  user_review_required: true,
+  priority: 5,
+  
+  example_files: ["2025_1123-busCard-carpentry.pdf", "2025_0916-busCard-EmploymentServ.pdf"]
+})
+Next step would be:
+
+Python function that reads YAML → converts to Cypher → creates META-NODE in Neo4j
+Want to tackle that next, or define a few more META-NODEs first (like Property-Duplex, Financial-2024-2025)?
+Lets do the same process with the File-Node. Yaml example and then Cypher version of the YAML like it was created by code we have not developed yet.5:11 PMYAML Example: FILE-NODE for Business Card
+
+yamlFILE-NODE: BusinessCard_Carpentry_20251123
+
+# Core Properties
+filepath: "C:\Users\termi\Dropbox\Contacts\BusinessCards\2025_1123-busCard-carpentry.pdf"
+description: "Carpenter business card - John Smith, met at hardware store for kitchen cabinet work"
+
+# Dynamic Properties (defined by BusinessCards META-NODE)
+contact_name: "John Smith"
+company: "Smith Carpentry & Renovations"
+phone: "780-555-1234"
+email: "john@smithcarpentry.com"
+trade_specialty: "carpentry"
+context: "Met at hardware store, recommended for kitchen cabinets"
+met_date: "2025-11-23"
+met_location: "Home Depot - Sherwood Park"
+
+# Metadata
+review_status: "reviewed"
+created_timestamp: "2026-01-15T13:45:22Z"
+last_modified: "2026-01-15T14:02:15Z"
+
+# Relationships
+stored_in: "Business Cards"  # META-NODE name
+tagged_with:
+  - "carpentry"
+  - "kitchen-reno"
+  - "tradesperson"
+
+Generated Cypher:
+cypher// Create the FILE-NODE
+CREATE (f:FileNode {
+  filepath: "C:\\Users\\termi\\Dropbox\\Contacts\\BusinessCards\\2025_1123-busCard-carpentry.pdf",
+  description: "Carpenter business card - John Smith, met at hardware store for kitchen cabinet work",
+  
+  // Dynamic properties from BusinessCards META-NODE schema
+  contact_name: "John Smith",
+  company: "Smith Carpentry & Renovations",
+  phone: "780-555-1234",
+  email: "john@smithcarpentry.com",
+  trade_specialty: "carpentry",
+  context: "Met at hardware store, recommended for kitchen cabinets",
+  met_date: "2025-11-23",
+  met_location: "Home Depot - Sherwood Park",
+  
+  // Metadata
+  review_status: "reviewed",
+  created_timestamp: datetime("2026-01-15T13:45:22Z"),
+  last_modified: datetime("2026-01-15T14:02:15Z")
+})
+
+// Create STORED_IN relationship to META-NODE
+MATCH (m:MetaNode {name: "Business Cards"})
+MATCH (f:FileNode {filepath: "C:\\Users\\termi\\Dropbox\\Contacts\\BusinessCards\\2025_1123-busCard-carpentry.pdf"})
+CREATE (f)-[:STORED_IN]->(m)
+
+// Create or find TAG nodes and create TAGGED_WITH relationships
+MERGE (t1:Tag {name: "carpentry", category: "trade"})
+MERGE (t2:Tag {name: "kitchen-reno", category: "project"})
+MERGE (t3:Tag {name: "tradesperson", category: "person-type"})
+
+MATCH (f:FileNode {filepath: "C:\\Users\\termi\\Dropbox\\Contacts\\BusinessCards\\2025_1123-busCard-carpentry.pdf"})
+CREATE (f)-[:TAGGED_WITH]->(t1)
+CREATE (f)-[:TAGGED_WITH]->(t2)
+CREATE (f)-[:TAGGED_WITH]->(t3)
+Alternative - More compact version using single transaction:
+cypher// Create FILE-NODE and all relationships in one go
+MATCH (m:MetaNode {name: "Business Cards"})
+CREATE (f:FileNode {
+  filepath: "C:\\Users\\termi\\Dropbox\\Contacts\\BusinessCards\\2025_1123-busCard-carpentry.pdf",
+  description: "Carpenter business card - John Smith, met at hardware store for kitchen cabinet work",
+  contact_name: "John Smith",
+  company: "Smith Carpentry & Renovations",
+  phone: "780-555-1234",
+  email: "john@smithcarpentry.com",
+  trade_specialty: "carpentry",
+  context: "Met at hardware store, recommended for kitchen cabinets",
+  met_date: "2025-11-23",
+  met_location: "Home Depot - Sherwood Park",
+  review_status: "reviewed",
+  created_timestamp: datetime("2026-01-15T13:45:22Z"),
+  last_modified: datetime("2026-01-15T14:02:15Z")
+})
+CREATE (f)-[:STORED_IN]->(m)
+
+WITH f
+MERGE (t1:Tag {name: "carpentry"})
+MERGE (t2:Tag {name: "kitchen-reno"})
+MERGE (t3:Tag {name: "tradesperson"})
+CREATE (f)-[:TAGGED_WITH]->(t1)
+CREATE (f)-[:TAGGED_WITH]->(t2)
+CREATE (f)-[:TAGGED_WITH]->(t3)
+Good?
