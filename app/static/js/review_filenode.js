@@ -1,7 +1,17 @@
 /* eslint-disable no-unused-vars */
-// document.addEventListener('DOMContentLoaded', function() {
 const formDirtyStates = new Map();
+// Map fnode properties to td classes
+const fieldMapping = {
+  'node-col': 'FILE-NODE-id',
+  'category': 'category',
+  'name': 'contact_name',
+  'phone': 'phone',
+  'cell': 'cell',
+  'description': 'description',
+  'location': 'filepath'
+};
 
+// #### initialization for after DOM is loaded ####
 export function initContentTabs() {
     document.addEventListener('click', function(e) {
         // Click in the right pane?
@@ -36,12 +46,22 @@ export function initContentTabs() {
 
     // Update form changes
     const updatePane = document.getElementById('update-pane')
-    updatePane.addEventListener('change', (e) => {
+    // updatePane.addEventListener('change', (e) => {
+    updatePane.addEventListener('input', (e) => {
+        // filter out updates to reviewed checkbox
+        if (e.target.name?.startsWith('reviewed')) return 
         const form = e.target.closest('form')
         if (form) {
             formDirtyStates.set(form, true)
             const saveBtn = form.querySelector('.btn-primary')
+            const resetBtn = form.querySelector('.btn-secondary')
+            const cnt = form.dataset.cnt;
+            const nodeId = form.querySelector(`#node${cnt}`).value;
+            const row = document.getElementById(nodeId);
+            row.classList.add('row-edited');
             saveBtn.disabled = false
+            resetBtn.disabled = false
+            updateBulkActions()
         }
     })
 
@@ -99,18 +119,26 @@ export function initContentTabs() {
 
     document.getElementById('delete-selected').addEventListener('click', () => {
         const selected = getSelectedRecordIds();
-        
+
         // Simulate deletion
         if (confirm(`Delete ${selected.length} record(s)?`)) {
             selected.forEach(id => {
-                const row = document.querySelector(`tr[data-id="${id}"]`);
-                row.style.opacity = '0.3';
+                const row = document.getElementById(id)
+                const form = getFormByNodeId(id)
+                console.log("form and id", form, id, formDirtyStates)
+                row.style.opacity = '0.3'
                 setTimeout(() => {
-                    row.remove();
-                    dirtyRecords.delete(id);
-                }, 300);
-            });
-            
+                    row.remove()
+                    if (form) {
+                        formDirtyStates.delete(form)
+                        const panelId = `record${form.dataset.cnt}`
+                        const row = document.getElementById(id)
+                        form.closest('.sub-tab-content')?.remove()
+                        document.querySelector(`[data-record="${panelId}"]`)?.remove()
+                    }
+                }, 300)
+            })
+
             // Uncheck select-all
             document.getElementById('select-all').checked = false;
             updateBulkActions();
@@ -122,16 +150,19 @@ export function initContentTabs() {
         const action = actionSelect.value;
         const selected = getSelectedRecordIds();
         const recordCheckboxes = document.querySelectorAll('.record-checkbox')        // Only commit dirty records
-        const dirtySelected = selected.filter(id => dirtyRecords.has(id));
-        
+        const dirtySelected = selected.filter(id => {
+            const form = getFormByNodeId(id)
+            return form && formDirtyStates.get(form)
+        });
         switch(action) {
             case 'commit':
                 dirtySelected.forEach(id => {
-                    const row = document.querySelector(`tr[data-id="${id}"]`);
-                    row.classList.remove('dirty');
-                    row.classList.add('pristine');
-                    row.querySelector('td:last-child').textContent = 'Pristine';
-                    dirtyRecords.delete(id);
+                    const row = document.getElementById(id)
+                    row.classList.remove('row-edited')
+                    row.classList.add('row-saved')
+                    // row.querySelector('td:last-child').textContent = 'Pristine';
+                    const form = getFormByNodeId(id)
+                    if (form) formDirtyStates.delete(form)
                 });
                 break;
                 
@@ -152,75 +183,7 @@ export function initContentTabs() {
     });
     document.querySelector('[data-tab="query"]').click()
 };
-
-function updateReviewForm(data, rootpath) {
-    const [debugQuery, ...fnodes] = data;
-    if (!debugQuery) {
-        console.log("Debug Query invalid:", debugQuery)
-    }
-    if (!fnodes || fnodes.length === 0) {
-        console.log(`Full results node data not found ${data}`, data)
-        return
-    }
-    const container = document.querySelector('.list')
-    container.querySelector('.root-path').textContent = rootpath
-    const tableBody = container.querySelector('#search-path-rows')
-    tableBody.innerHTML = ''
-    fnodes.forEach(fnode => {
-        tableBody.appendChild(createRow(fnode['fnode'], rootpath));
-    });
-
-    // Unhide list and update tabs and show list tab
-    document.querySelector('[data-tab="update"]').classList.remove('hidden');
-    const tab2 = document.querySelector('[data-tab="list"]')
-    tab2.classList.remove('hidden');
-    tab2.click();
-    // console.log(data)
-    document.getElementById('results').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-}
-
-// Map fnode properties to td classes
-const fieldMapping = {
-  'node-col': 'FILE-NODE-id',
-  'category': 'category',
-  'name': 'contact_name',
-  'phone': 'phone',
-  'cell': 'cell',
-  'description': 'description',
-  'location': 'filepath'
-};
-    //   fn = data['fnode'] 
-    //     'node-col'
-    // }
-    // tr.id = `node-${fnode.nodeId}`;
-    // if fn['FILE-NODE-id']
-    // "FILE-NODE-id": "busCard-employment-serv_20250916",
-    // if fn['category']
-    // "category": "employment services",
-    // if fn['contact_name']
-    // "contact_name": "Nadine Byers",
-    // if fn['phone']
-    // "phone": "780-609-0660",
-    // if fn['cell']
-    // if fn['description']
-    // "description": "Employment agency that helps Athabascans get work.",
-    // if fn['filepath']
-    // "filepath": "C:\\Users\\termi\\Dropbox\\2025_0916-busCard-EmploymentServ.pdf",
-    // if fn['context_note']
-    // "context_note": "She helped me get employed at the Seniors Centre. See phone contact list for full contact info. Not an actual card.",
-    // if fn['email']
-    // "email": "nadine@abwes.com",
-    // if fn['timestamp']
-    // "timestamp": "2025-09-16 3:08 PM"
-    // if fn['size']
-    //   "size": "113 KB",
-    // },
-    // })
-
-function truncate(str, maxLength) {
-  return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
-}
-
+// #### Table and Row updates ####
 function createRow(fnode, rootpath) {
     const tr = document.createElement('tr');
     tr.id = fnode['FILE-NODE-id'];
@@ -257,132 +220,6 @@ function createRow(fnode, rootpath) {
     return tr;
 }
 
-const dirtyRecords = new Set(['record-2', 'record-4']);
-
-function updateUpdateForms(data, rootpath) {
-    // console.log("In updateUpdateForms",data, rootpath)
-    const [debugQuery, ...fnodes] = data;
-    if (!debugQuery) { // I dont think this fails; just for linter. 
-        console.log('Debug query is invalid:', debugQuery);
-}
-    if (!fnodes || fnodes.length === 0) {
-        console.log(`Full results node data not found ${data}`, data)
-        return
-    }
-    // find sub tab div and hide all current buttons. 
-    const tabContainer = document.getElementById('update-pane');
-    tabContainer.innerHTML = '' // start fresh
-    const recordTabs = document.createElement('div')
-    recordTabs.className = 'sub-tabs'
-    //   for each record tab button content
-    fnodes.forEach((fnode, i) => {
-        recordTabs.appendChild(createSubTab(fnode['fnode'], i+1));
-    });
-    tabContainer.appendChild(recordTabs)
-    
-    fnodes.forEach((fnode, i )=> {
-        tabContainer.appendChild(createRecordPanel(fnode['fnode'], rootpath, i+1))
-    });
-} 
-
-function createSubTab (record, cnt) {
-    const btn = document.createElement('button')
-    btn.className = 'sub-tab-btn'
-    if (cnt === 1) btn.classList.add('active');
-    btn.textContent = record['contact_name'] || `Record ${cnt}`
-    btn.dataset.record = `record${cnt}`;
-    return btn
-}
-
-function createRecordPanel(record, rootpath, cnt) {
-    const stc = document.createElement('div')
-    stc.id = `record${cnt}`
-    stc.className = 'sub-tab-content'
-    if (cnt === 1) stc.classList.add('active')
-    const recordForm = document.createElement('form')
-    recordForm.className = 'record-form'
-    // Helper function to create form groups
-    function createFormGroup(label, id, name, value, readonly = false, isTextarea = false) {
-        const group = document.createElement('div');
-        group.className = 'form-group';
-        
-        const labelEl = document.createElement('label');
-        labelEl.setAttribute('for', id);
-        labelEl.textContent = label;
-        
-        let input;
-        if (isTextarea) {
-            input = document.createElement('textarea');
-            input.textContent = value || '';
-        } else {
-            input = document.createElement('input');
-            input.type = 'text';
-            input.value = value || '';
-        }
-        
-        input.id = id;
-        input.name = name;
-        if (readonly) input.readOnly = true;
-        
-        group.appendChild(labelEl);
-        group.appendChild(input);
-        return group;
-    }
-
-        // Create recordForm fields
-    recordForm.appendChild(createFormGroup('Node ID:', `node${cnt}`, `node${cnt}`, record['FILE-NODE-id'], true));
-    recordForm.appendChild(createFormGroup('Category:', `category${cnt}`, `category${cnt}`, record['category']));
-    recordForm.appendChild(createFormGroup('Company:', `company${cnt}`, `company${cnt}`, record['company']));
-    recordForm.appendChild(createFormGroup('Contact Name:', `contact${cnt}`, `contact${cnt}`, record['contact_name']));
-    recordForm.appendChild(createFormGroup('Phone:', `phone${cnt}`, `phone${cnt}`, record['phone']));
-    recordForm.appendChild(createFormGroup('Email:', `email${cnt}`, `email${cnt}`, record['email']));
-    recordForm.appendChild(createFormGroup('Description:', `description${cnt}`, `description${cnt}`, record['description'], false, true));
-    recordForm.appendChild(createFormGroup('Context Note:', `context${cnt}`, `context${cnt}`, record['context_note'], false, true));
-    recordForm.appendChild(createFormGroup('Location:', `location${cnt}`, `location${cnt}`, record['filepath'], true));
-    // Create form actions
-    const actions = document.createElement('div');
-    actions.className = 'form-actions';
-    
-    const saveBtn = document.createElement('button');
-    saveBtn.type = 'submit';
-    saveBtn.className = 'btn btn-primary';
-    saveBtn.textContent = 'Save Changes';
-    
-    const resetBtn = document.createElement('button');
-    resetBtn.type = 'reset';
-    resetBtn.className = 'btn btn-secondary';
-    resetBtn.textContent = 'Reset';
-
-    const reviewedCB = document.createElement('input');
-    reviewedCB.type = 'checkbox';
-    reviewedCB.id = `reviewed${cnt}`; 
-    reviewedCB.name = `reviewed${cnt}`;
-    reviewedCB.checked = record.reviewed ?? false;
-    reviewedCB.className = 'my-checkbox-class';
-    const label = document.createElement('label');
-    label.htmlFor = `reviewed${cnt}`;
-    label.textContent = 'Reviewed';
-
-    actions.appendChild(saveBtn);
-    actions.appendChild(resetBtn);
-    actions.appendChild(reviewedCB);
-    actions.appendChild(label);
-    recordForm.appendChild(actions);
-
-
-
-    
-    // Add form submit handler
-    recordForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        // Handle save logic here
-        console.log('Form submitted for record', cnt);
-    });
-    
-    stc.appendChild(recordForm);
-    return stc;
-}
-
 // Update bulk action controls based on selection
 function updateBulkActions() {
     const checkedCount = getCheckedCount();
@@ -416,9 +253,9 @@ function getCheckedDirtyCount() {
     recordCheckboxes.forEach(cb => {
         if (cb.checked) {
             const row = cb.closest('tr');
-            const recordId = row.dataset.id;
-            if (dirtyRecords.has(recordId)) {
-                count++;
+            const form = getFormByNodeId(row.id)
+            if (form && formDirtyStates.get(form)) {
+                count++
             }
         }
     });
@@ -428,14 +265,234 @@ function getCheckedDirtyCount() {
 // Get selected record IDs
 function getSelectedRecordIds() {
     const recordCheckboxes = document.querySelectorAll('.record-checkbox')
+    console.log ("Selected Rows", recordCheckboxes)
     const selected = [];
     recordCheckboxes.forEach(cb => {
         if (cb.checked) {
             const row = cb.closest('tr');
-            selected.push(row.dataset.id);
+            selected.push(row.id);
         }
     });
+    console.log("Checked boxes", selected)
     return selected;
 }
 
+// #### Forms and Panel routines ####
+function getFormByNodeId(nodeId) {
+    for (const [form] of formDirtyStates.entries()) {
+        if (form.dataset.nodeId === nodeId) {
+            return form
+        }
+    }
+    return null
+}
 
+function createRecordPanel(record, rootpath, cnt) {
+    const stc = document.createElement('div')
+    stc.id = `record${cnt}`
+    stc.className = 'sub-tab-content'
+    if (cnt === 1) stc.classList.add('active')
+    const recordForm = document.createElement('form')
+    recordForm.className = 'record-form'
+    // Helper function to create form groups
+    function createFormGroup(label, id, name, value, readonly = false, isTextarea = false) {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        
+        const labelEl = document.createElement('label');
+        labelEl.setAttribute('for', id);
+        labelEl.textContent = label;
+        
+        let input;
+        if (isTextarea) {
+            input = document.createElement('textarea');
+            input.textContent = value || '';
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = value || '';
+            input.defaultValue = value || '';
+        }
+        
+        input.id = id;
+        input.name = name;
+        if (readonly) input.readOnly = true;
+        
+        group.appendChild(labelEl);
+        group.appendChild(input);
+        return group;
+    }
+
+        // Create recordForm fields
+    const nodeGroup = createFormGroup('Node ID:', `node${cnt}`, `node${cnt}`, record['FILE-NODE-id'], true);
+    // nodeId captured here for closure scope in listeners. Also accessible via the dataset nodeId.
+    const nodeId = nodeGroup.querySelector('input[name^="node"]').value;
+    recordForm.dataset.nodeId = nodeId;
+    recordForm.dataset.cnt = cnt;
+    recordForm.appendChild(nodeGroup);
+    recordForm.appendChild(createFormGroup('Category:', `category${cnt}`, `category${cnt}`, record['category']));
+    recordForm.appendChild(createFormGroup('Company:', `company${cnt}`, `company${cnt}`, record['company']));
+    recordForm.appendChild(createFormGroup('Contact Name:', `contact${cnt}`, `contact${cnt}`, record['contact_name']));
+    recordForm.appendChild(createFormGroup('Phone:', `phone${cnt}`, `phone${cnt}`, record['phone']));
+    recordForm.appendChild(createFormGroup('Email:', `email${cnt}`, `email${cnt}`, record['email']));
+    recordForm.appendChild(createFormGroup('Description:', `description${cnt}`, `description${cnt}`, record['description'], false, true));
+    recordForm.appendChild(createFormGroup('Context Note:', `context${cnt}`, `context${cnt}`, record['context_note'], false, true));
+    recordForm.appendChild(createFormGroup('Location:', `location${cnt}`, `location${cnt}`, record['filepath'], true));
+    // Create form actions
+    const actions = document.createElement('div');
+    actions.className = 'form-actions';
+    
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'submit';
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.textContent = 'Save Changes';
+    saveBtn.disabled = true;  // TODO: could this be set to the actual value here?
+    
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'reset';
+    resetBtn.className = 'btn btn-secondary';
+    resetBtn.textContent = 'Reset';
+    resetBtn.disabled = true; // TODO: could this be set to the actual value here?
+
+    const reviewedCB = document.createElement('input');
+    reviewedCB.type = 'checkbox';
+    reviewedCB.id = `reviewed${cnt}`; 
+    reviewedCB.name = `reviewed${cnt}`;
+    reviewedCB.checked = record.reviewed ?? false;
+    reviewedCB.className = 'my-checkbox-class';
+    const label = document.createElement('label');
+    label.htmlFor = `reviewed${cnt}`;
+    label.textContent = 'Reviewed';
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(resetBtn);
+    actions.appendChild(reviewedCB);
+    actions.appendChild(label);
+    recordForm.appendChild(actions);
+
+    resetBtn.addEventListener('click', () => {
+        recordForm.reset();
+        console.log("Reset Btn")
+    });
+
+    recordForm.addEventListener('reset', () => {
+        formDirtyStates.set(recordForm, false);
+        saveBtn.disabled = true;
+        resetBtn.disabled = true;
+        const row = document.getElementById(nodeId);
+        row.classList.remove('row-edited');
+        console.log("Reset form", recordForm)
+        updateBulkActions()
+    });
+
+    reviewedCB.addEventListener('change', (e) => {
+        const row = document.getElementById(nodeId);
+        if (e.target.checked) {
+            row.classList.add('row-reviewed');
+        } else {
+            row.classList.remove('row-reviewed');
+        }
+    })
+
+    recordForm.addEventListener('submit', (e) => {
+        // TODO: DB call goes here
+        e.preventDefault()
+        // Update defaults so reset now baselines to saved values
+        const row = document.getElementById(nodeId);
+        recordForm.querySelectorAll('input[type="text"]').forEach(input => {
+            input.defaultValue = input.value;
+        });
+        recordForm.querySelectorAll('textarea').forEach(textarea => {
+            textarea.defaultValue = textarea.value;
+        });
+
+        formDirtyStates.set(recordForm, false);
+        row.classList.remove('row-edited');
+        row.classList.add('row-saved');
+        saveBtn.disabled = true;
+        resetBtn.disabled = true;
+        updateBulkActions()
+        // setTimeout(() => row.classList.remove('row-saved'), 2000); 
+        console.log('Form submitted for record', cnt);
+    });
+    
+    formDirtyStates.set(recordForm, false)
+    stc.appendChild(recordForm);
+    return stc;
+}
+
+function deleteRecordPanel(form) {
+    const dirtyCount = Array.from(formDirtyStates.values()).filter(dirty => dirty).length;
+    if (dirtyCount > 0) {
+        if (!confirm(`${dirtyCount} record(s) have unsaved changes. Confirm?`)) {
+            return;
+        }
+    }
+    formDirtyStates.delete(form);
+    form.remove();
+}
+
+function createSubTab (record, cnt) {
+    const btn = document.createElement('button')
+    btn.className = 'sub-tab-btn'
+    if (cnt === 1) btn.classList.add('active');
+    btn.textContent = record['contact_name'] || `Record ${cnt}`
+    btn.dataset.record = `record${cnt}`;
+    return btn
+}
+
+function updateUpdateForms(data, rootpath) {
+    // console.log("In updateUpdateForms",data, rootpath)
+    const [debugQuery, ...fnodes] = data;
+    if (!debugQuery) { // I dont think this fails; just for linter. 
+        console.log('Debug query is invalid:', debugQuery);
+}
+    if (!fnodes || fnodes.length === 0) {
+        console.log(`Full results node data not found ${data}`, data)
+        return
+    }
+    // find sub tab div and hide all current buttons. 
+    const tabContainer = document.getElementById('update-pane');
+    tabContainer.innerHTML = '' // start fresh
+    const recordTabs = document.createElement('div')
+    recordTabs.className = 'sub-tabs'
+    //   for each record tab button content
+    fnodes.forEach((fnode, i) => {
+        recordTabs.appendChild(createSubTab(fnode['fnode'], i+1));
+    });
+    tabContainer.appendChild(recordTabs)
+    
+    fnodes.forEach((fnode, i )=> {
+        tabContainer.appendChild(createRecordPanel(fnode['fnode'], rootpath, i+1))
+    });
+} 
+
+function updateReviewForm(data, rootpath) {
+    const [debugQuery, ...fnodes] = data;
+    if (!debugQuery) {
+        console.log("Debug Query invalid:", debugQuery)
+    }
+    if (!fnodes || fnodes.length === 0) {
+        console.log(`Full results node data not found ${data}`, data)
+        return
+    }
+    const container = document.querySelector('.list')
+    container.querySelector('.root-path').textContent = rootpath
+    const tableBody = container.querySelector('#search-path-rows')
+    tableBody.innerHTML = ''
+    fnodes.forEach(fnode => {
+        tableBody.appendChild(createRow(fnode['fnode'], rootpath));
+    });
+
+    // Unhide list and update tabs and show list tab
+    document.querySelector('[data-tab="update"]').classList.remove('hidden');
+    const tab2 = document.querySelector('[data-tab="list"]')
+    tab2.classList.remove('hidden');
+    tab2.click();
+    // console.log(data)
+    document.getElementById('results').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+}
+// #### Utilities ####
+function truncate(str, maxLength) {
+  return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
+}

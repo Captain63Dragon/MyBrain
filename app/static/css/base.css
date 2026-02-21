@@ -98,23 +98,47 @@ th {
     font-weight: bold;
 }
 
+/* tr {
+    background-color: white;
+} */
+
 tr:hover {
     background-color: #f5f5f5;
     cursor: pointer;
 }
 
-tr.pristine {
-    background: white;
+/* Edited - pending changes */
+tr.row-edited {
+    background-color: #fff3cd;
 }
 
-tr.dirty {
-    background: #e3f2fd; /* Light blue pastel */
+tr.row-edited:hover {
+    background-color: #ffe69c;
 }
 
-tr.dirty:hover {
-    background: #d1e7fd;
+/* Reviewed only - signed off */
+tr.row-reviewed {
+    background-color: #e8f5e9;
 }
 
+tr.row-reviewed:hover {
+    background-color: #d4edda;
+}
+
+/* Edited and reviewed - ready to commit */
+tr.row-edited.row-reviewed {
+    background-color: #d1e7dd;
+}
+
+tr.row-edited.row-reviewed:hover {
+    background-color: #badbcc;
+}
+
+/* Save flash */
+tr.row-saved {
+    background-color: #cfe2ff;
+    transition: background-color 2s ease;
+}
 
 .description {
     max-width: 200px;
