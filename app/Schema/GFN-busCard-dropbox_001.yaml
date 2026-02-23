@@ -18,7 +18,7 @@ company: "Kate Nunn Law"
 contact_name: "Katherine C. Nunn"
 phone: "780-675-3326"
 email: "katenunnlaw@gmail.com"
-context_notes: "Spoke at Seniors Center Information event"
+context_note: "Spoke at Seniors Center Information event"
 tagged_with: []  # No tags yet
 
 FILE-NODE: busCard_dwprod_20240113
@@ -29,7 +29,7 @@ company: "DW Productions"
 contact_name: "Don Waddle"
 phone: "780-984-6026"
 email: "iamdw.productions@gmail.com"
-context_notes: "Card:'Mastermind of all things technical theatre'. Met Don at Appleby Soundtech camp. He provided inspiration for involving teens in theater tech positions"
+context_note: "Card:'Mastermind of all things technical theatre'. Met Don at Appleby Soundtech camp. He provided inspiration for involving teens in theater tech positions"
 tagged_with: []  # No tags yet
 
 FILE-NODE: busCard_footcare_20250605
@@ -41,7 +41,7 @@ phone: 780-327-9944
 email: "shera@queenbeefootcare.ca"
 location: "#3 5412-50 ave, Athabasca, AB T9S 1L4"
 url: "www.queenbeefootcare.ca"
-context_notes: "Met at Seniors Info Event. Gordon knows her too. Director of her new business. Expensive compared to Government supplied service."
+context_note: "Met at Seniors Info Event. Gordon knows her too. Director of her new business. Expensive compared to Government supplied service."
 tagged_with: []  # No tags yet
 
 FILE-NODE: busCard_telustech_20230428
@@ -53,7 +53,7 @@ contact_name: Dylan Baert
 phone: 780-217-7884
 email: "Chris.Chickoski@telus.com" # manager
 url: "telus.com/support" # corporation support helpline
-context_notes: "Met at Seniors Info Event. Gordon knows her too. Director of her new business. Expensive compared to Government supplied service."
+context_note: "Met at Seniors Info Event. Gordon knows her too. Director of her new business. Expensive compared to Government supplied service."
 # 310-2255 Not sure what this is, some ID number. Employee?
 tagged_with: []  # No tags yet
 
@@ -65,7 +65,7 @@ company: "Keeps Mechanical Services Ltd"
 contact_name: "service_point"
 phone: 825-829-2010
 location: "5201 Railway Ave Boyle, AB TOAOMO"
-context_notes: "This is a screen capture of a web listing. 55 reviews at the time of capture. Hours available"
+context_note: "This is a screen capture of a web listing. 55 reviews at the time of capture. Hours available"
 tagged_with: []  # No tags yet
 
 FILE-NODE: busCard_canaccord_20210924
