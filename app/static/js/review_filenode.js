@@ -1,15 +1,25 @@
 /* eslint-disable no-unused-vars */
 const formDirtyStates = new Map();
 // Map fnode properties to td classes
-const fieldMapping = {
-  'node-col': 'FILE-NODE-id',
-  'category': 'category',
-  'name': 'contact_name',
-  'phone': 'phone',
-  'cell': 'cell',
-  'description': 'description',
-  'location': 'filepath'
+export const fieldMapping = {
+    'node': 'FILE-NODE-id',
+    'category': 'category',
+    'company': 'company',
+    'contact': 'contact_name',
+    'phone': 'phone',
+    'cell': 'cell',
+    'email': 'email',
+    'description': 'description',
+    'context': 'context_note',
+    'filepath': 'filepath',
+    'reviewed': 'reviewed'
 };
+
+const tableColumns = ['node', 'category', 'contact', 'phone', 'cell', 'description', 'filepath'];
+const tableMapping = Object.fromEntries(
+    Object.entries(fieldMapping).filter(([key]) => tableColumns.includes(key))
+);
+
 
 // #### initialization for after DOM is loaded ####
 export function initContentTabs() {
@@ -116,6 +126,8 @@ export function initContentTabs() {
     document.getElementById('bulk-action-select').addEventListener('change', () => {
         updateBulkActions();
     });
+    document.querySelector('[data-tab="query"]').click()
+};
 
 document.getElementById('delete-selected').addEventListener('click', async () => {
     const selected = getSelectedRecordIds();
@@ -154,44 +166,67 @@ document.getElementById('delete-selected').addEventListener('click', async () =>
     }
 });
 
-    document.getElementById('execute-action').addEventListener('click', () => {
-        const actionSelect = document.getElementById('bulk-action-select')
-        const action = actionSelect.value;
-        const selected = getSelectedRecordIds();
-        const recordCheckboxes = document.querySelectorAll('.record-checkbox')        // Only commit dirty records
-        const dirtySelected = selected.filter(id => {
-            const form = getFormByNodeId(id)
-            return form && formDirtyStates.get(form)
-        });
-        switch(action) {
-            case 'commit':
-                dirtySelected.forEach(id => {
-                    const row = document.getElementById(id)
-                    row.classList.remove('row-edited')
-                    row.classList.add('row-saved')
-                    // row.querySelector('td:last-child').textContent = 'Pristine';
-                    const form = getFormByNodeId(id)
-                    if (form) formDirtyStates.delete(form)
-                });
-                break;
-                
-            case 'move':
-                alert(`Would open file move dialog for ${selected.length} records`);
-                break;
-                
-            case 'export':
-                alert(`Would export ${selected.length} records to CSV`);
-                break;
-        }
-        
-        // Reset action select and uncheck boxes
-        actionSelect.value = '';
-        recordCheckboxes.forEach(cb => cb.checked = false);
-        document.getElementById('select-all').checked = false;
-        updateBulkActions();
+document.getElementById('execute-action').addEventListener('click', async () => {
+    const actionSelect = document.getElementById('bulk-action-select');
+    const action = actionSelect.value;
+    const selected = getSelectedRecordIds();
+    const recordCheckboxes = document.querySelectorAll('.record-checkbox');
+
+    const dirtySelected = selected.filter(id => {
+        const form = getFormByNodeId(id);
+        return form && formDirtyStates.get(form);
     });
-    document.querySelector('[data-tab="query"]').click()
-};
+
+    switch(action) {
+        case 'commit': {
+            const updates = dirtySelected.map(id => {
+                const form = getFormByNodeId(id);
+                return {
+                    nodeId: id,
+                    fields: getFormFields(form)
+                };
+            });
+
+            for (const update of updates) {
+                const response = await fetch('/buscard/node/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(update)
+                });
+                const result = await response.json();
+
+                if (result.status === 'ok') {
+                    const row = document.getElementById(update.nodeId);
+                    row.classList.remove('row-edited');
+                    row.classList.add('row-saved');
+                    const form = getFormByNodeId(update.nodeId);
+                    if (form) {
+                        formDirtyStates.delete(form);
+                        form.querySelector('.save-btn').disabled = true;
+                        form.querySelector('.reset-btn').disabled = true;
+                    }
+                } else {
+                    console.error('Update failed for', update.nodeId, result);
+                }
+            }
+            break;
+        }
+        case 'move':
+            alert(`Would open file move dialog for ${selected.length} records`);
+            break;
+
+        case 'export':
+            alert(`Would export ${selected.length} records to CSV`);
+            break;
+    }
+
+    actionSelect.value = '';
+    recordCheckboxes.forEach(cb => cb.checked = false);
+    document.getElementById('select-all').checked = false;
+    updateBulkActions();
+
+});
+
 // #### Table and Row updates ####
 function createRow(fnode, rootpath) {
     const tr = document.createElement('tr');
@@ -206,25 +241,31 @@ function createRow(fnode, rootpath) {
     tr.appendChild(checkboxTd);
 
     // Data columns
-    for (const [className, propName] of Object.entries(fieldMapping)) {
-    const td = document.createElement('td');
-    var newValue = fnode[propName]
-    if (className == 'location') {
-        // remove the root path
-        const filepath = newValue
-        // console.log("My rootpath is", rootpath, fnode['filepath'])
-        const subpath = filepath.toLowerCase().startsWith(rootpath.toLowerCase()) 
-            ? filepath.slice(rootpath.length) 
-            : filepath;
-        newValue = subpath
-    }
-    td.className = className;
-    const value = newValue || '';
+    for (const [className, propName] of Object.entries(tableMapping)) {
+        const td = document.createElement('td');
+        let newValue = fnode[propName];
 
-    td.title = value;
-    td.textContent = className === 'description' ? truncate(value, 47) : value;
-    td.textContent = className === 'location' ? truncate(value, 87) : value;
-    tr.appendChild(td);
+        if (className === 'filepath') {
+            const filepath = newValue || '';
+            const subpath = filepath.toLowerCase().startsWith(rootpath.toLowerCase())
+                ? filepath.slice(rootpath.length)
+                : filepath;
+            newValue = subpath;
+        }
+
+        td.className = className;
+        const value = newValue || '';
+        td.title = value;
+
+        if (className === 'description') {
+            td.textContent = truncate(value, 47);
+        } else if (className === 'filepath') {
+            td.textContent = truncate(value, 87);
+        } else {
+            td.textContent = value;
+        }
+
+        tr.appendChild(td);
     }
     return tr;
 }
@@ -296,6 +337,18 @@ function getFormByNodeId(nodeId) {
     return null
 }
 
+function getFormFields(form) {
+    const cnt = form.dataset.cnt;
+    const fields = {};
+    Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
+        if (formKey === 'node') return;
+        const el = form.querySelector(`[name="${formKey}${cnt}"]`);
+        if (!el) return;
+        fields[nodeKey] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    return fields;
+}
+
 function createRecordPanel(record, rootpath, cnt) {
     const stc = document.createElement('div')
     stc.id = `record${cnt}`
@@ -346,7 +399,7 @@ function createRecordPanel(record, rootpath, cnt) {
     recordForm.appendChild(createFormGroup('Email:', `email${cnt}`, `email${cnt}`, record['email']));
     recordForm.appendChild(createFormGroup('Description:', `description${cnt}`, `description${cnt}`, record['description'], false, true));
     recordForm.appendChild(createFormGroup('Context Note:', `context${cnt}`, `context${cnt}`, record['context_note'], false, true));
-    recordForm.appendChild(createFormGroup('Location:', `location${cnt}`, `location${cnt}`, record['filepath'], true));
+    recordForm.appendChild(createFormGroup('File Path:', `filepath${cnt}`, `filepath${cnt}`, record['filepath'], true));
     // Create form actions
     const actions = document.createElement('div');
     actions.className = 'form-actions';
@@ -403,25 +456,38 @@ function createRecordPanel(record, rootpath, cnt) {
         }
     })
 
-    recordForm.addEventListener('submit', (e) => {
-        e.preventDefault()
-        // Update defaults so reset now baselines to saved values
-        const row = document.getElementById(nodeId);
-        recordForm.querySelectorAll('input[type="text"]').forEach(input => {
-            input.defaultValue = input.value;
-        });
-        recordForm.querySelectorAll('textarea').forEach(textarea => {
-            textarea.defaultValue = textarea.value;
+    recordForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nodeId = recordForm.dataset.nodeId;
+        const fields = getFormFields(recordForm);
+
+        const response = await fetch('/buscard/node/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nodeId, fields })
         });
 
-        formDirtyStates.set(recordForm, false);
-        row.classList.remove('row-edited');
-        row.classList.add('row-saved');
-        saveBtn.disabled = true;
-        resetBtn.disabled = true;
-        updateBulkActions()
-        // setTimeout(() => row.classList.remove('row-saved'), 2000); 
-        // console.log('Form submitted for record', cnt);
+        const result = await response.json();
+
+        if (result.status === 'ok') {
+            // Baseline defaults to saved values for revert
+            recordForm.querySelectorAll('input[type="text"]').forEach(input => {
+                input.defaultValue = input.value;
+            });
+            recordForm.querySelectorAll('textarea').forEach(textarea => {
+                textarea.defaultValue = textarea.value;
+            });
+
+            const row = document.getElementById(nodeId);
+            formDirtyStates.set(recordForm, false);
+            row.classList.remove('row-edited');
+            row.classList.add('row-saved');
+            saveBtn.disabled = true;
+            resetBtn.disabled = true;
+            updateBulkActions();
+        } else {
+            console.error('Save failed for', nodeId, result);
+        }
     });
     
     formDirtyStates.set(recordForm, false)

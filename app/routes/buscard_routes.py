@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
 from app.services.neo4j_service import create_nodes, ensure_filenode_constraint
-from app.services.neo4j_service import delete_file_nodes
+from app.services.neo4j_service import delete_file_nodes, update_file_node
 from app.services.neo4j_service import normalize_path_for_cypher, search_for_file_node
 from app.services.schema_service import load_mfn, parse_gfn, map_properties, parse_user_search_input
 import json
@@ -70,8 +70,12 @@ def update_node():
     data = request.json
     node_id = data.get('nodeId')
     fields = data.get('fields')
-    # TODO: Neo4j update
-    return jsonify({'status': 'not implemented'})
+    
+    if not node_id or not fields:
+        return jsonify({'error': 'nodeId and fields required'}), 400
+    
+    result = update_file_node(node_id, fields)
+    return jsonify(result)
 
 @buscard_bp.route('/node/delete', methods=['POST'])
 def delete_node():
