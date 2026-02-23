@@ -1,0 +1,20 @@
+Project: Neo4j + Docker + Python/Flask + Vanilla JS/HTML/CSS. A UI for reviewing and editing business card file nodes stored in Neo4j.
+Four tabs: Query (drives everything), Node List (table, DB ground truth), Review (sub-tabs, one record per tab, editable forms), Results (raw query output).
+Left panel: Service navigation. Currently: Search Database, Review Filenode. Pattern: /buscard/query/<service_key>.
+Right panel endpoints:
+
+/buscard/node/update — surgical += PATCH, never full replace
+/buscard/node/delete — DETACH DELETE, always receives a list
+/buscard/node/move — placeholder
+
+Key architectural decisions:
+
+fieldMapping — canonical JS object mapping form field names to Neo4j property names
+tableColumns — subset of fieldMapping, controls table display independently
+tableMapping — derived by filtering fieldMapping through tableColumns
+Node identifier is FILE-NODE-id. filepath not location.
++= Cypher is sacred — optional fields on nodes never get clobbered by incomplete forms
+Reviewed checkbox is a regular field, saved as boolean, but doesn't trigger dirty state (known bug, deferred)
+
+Working: Full CRUD loop — query, display, edit, bulk/single save, bulk/single delete, cross-tab sync, dirty state tracking, revert/reset.
+What's next: MetaFileNode-driven form extension. MetaFileNode lives in Neo4j, defines core_properties and optional_properties with descriptions. Plan: fetch it on form load, render required fields always, show optional fields if they have data, provide multi-select "add field" control for adding optional fields during review. fieldMapping eventually gets replaced by something derived from MetaFileNode. 
