@@ -93,7 +93,7 @@ export function initContentTabs() {
         e.preventDefault();
         const formData = new FormData(e.target);
         // console.log("submit via POST")
-        const response = await fetch('/buscard/submit/review_filenode', {
+        const response = await fetch('/buscard/query/review_filenode', {
             method: 'POST',
             body: formData
         });
@@ -117,33 +117,42 @@ export function initContentTabs() {
         updateBulkActions();
     });
 
-    document.getElementById('delete-selected').addEventListener('click', () => {
-        const selected = getSelectedRecordIds();
+document.getElementById('delete-selected').addEventListener('click', async () => {
+    const selected = getSelectedRecordIds();
+    // console.log("Selected is ", selected)
+    if (confirm(`Delete ${selected.length} record(s)?`)) {
+        const response = await fetch('/buscard/node/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nodeIds: selected })
+        });
 
-        // Simulate deletion
-        if (confirm(`Delete ${selected.length} record(s)?`)) {
+        const result = await response.json();
+
+        if (result.status === 'ok') {
+            // your existing UI cleanup code
             selected.forEach(id => {
                 const row = document.getElementById(id)
                 const form = getFormByNodeId(id)
-                console.log("form and id", form, id, formDirtyStates)
                 row.style.opacity = '0.3'
                 setTimeout(() => {
                     row.remove()
                     if (form) {
                         formDirtyStates.delete(form)
                         const panelId = `record${form.dataset.cnt}`
-                        const row = document.getElementById(id)
                         form.closest('.sub-tab-content')?.remove()
                         document.querySelector(`[data-record="${panelId}"]`)?.remove()
                     }
                 }, 300)
             })
 
-            // Uncheck select-all
             document.getElementById('select-all').checked = false;
             updateBulkActions();
+        } else {
+            console.error('Delete failed:', result);
         }
-    });
+    }
+});
 
     document.getElementById('execute-action').addEventListener('click', () => {
         const actionSelect = document.getElementById('bulk-action-select')
@@ -273,7 +282,7 @@ function getSelectedRecordIds() {
             selected.push(row.id);
         }
     });
-    console.log("Checked boxes", selected)
+    // console.log("Checked boxes", selected)
     return selected;
 }
 
@@ -372,7 +381,7 @@ function createRecordPanel(record, rootpath, cnt) {
 
     resetBtn.addEventListener('click', () => {
         recordForm.reset();
-        console.log("Reset Btn")
+        // console.log("Reset Btn")
     });
 
     recordForm.addEventListener('reset', () => {
@@ -381,7 +390,7 @@ function createRecordPanel(record, rootpath, cnt) {
         resetBtn.disabled = true;
         const row = document.getElementById(nodeId);
         row.classList.remove('row-edited');
-        console.log("Reset form", recordForm)
+        // console.log("Reset form", recordForm)
         updateBulkActions()
     });
 
@@ -395,7 +404,6 @@ function createRecordPanel(record, rootpath, cnt) {
     })
 
     recordForm.addEventListener('submit', (e) => {
-        // TODO: DB call goes here
         e.preventDefault()
         // Update defaults so reset now baselines to saved values
         const row = document.getElementById(nodeId);
@@ -413,7 +421,7 @@ function createRecordPanel(record, rootpath, cnt) {
         resetBtn.disabled = true;
         updateBulkActions()
         // setTimeout(() => row.classList.remove('row-saved'), 2000); 
-        console.log('Form submitted for record', cnt);
+        // console.log('Form submitted for record', cnt);
     });
     
     formDirtyStates.set(recordForm, false)

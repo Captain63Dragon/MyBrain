@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
 from app.services.neo4j_service import create_nodes, ensure_filenode_constraint
+from app.services.neo4j_service import delete_file_nodes
 from app.services.neo4j_service import normalize_path_for_cypher, search_for_file_node
 from app.services.schema_service import load_mfn, parse_gfn, map_properties, parse_user_search_input
 import json
@@ -50,22 +51,42 @@ def load_service(service_key):
     print (f"Show service key: '{service_key}' at {service['template']}")
     # Render just the service template fragment and return to caller
     return render_template(service['template'], service=service)
-
-@buscard_bp.route('/submit/<service_key>', methods=['POST'])
-def submit_service(service_key):
-    # Handle service-specific logic here
+    
+@buscard_bp.route('/query/<service_key>', methods=['POST'])
+def query_service(service_key):
+    if service_key not in SERVICES:
+        return jsonify({'error': 'Service not found'}), 404
+    
     form_data = request.form.to_dict()
-    # print (f"form_data: {form_data}")
     # this will eventually be more than one path. Fake it for now.
-    paths = [ form_data['node_path'] ]
+    paths = [form_data['node_path']]
     filters = parse_user_search_input(form_data['property_filter'])
-    service = SERVICES[service_key]
-    # print (f"Got POST service key: '{service_key}' at {service['template']}")
     
     result = search_for_file_node(paths, filters)
-    # print (f"Is this result empty? {result}")
+    return jsonify(result)
+
+@buscard_bp.route('/node/update', methods=['POST'])
+def update_node():
+    data = request.json
+    node_id = data.get('nodeId')
+    fields = data.get('fields')
+    # TODO: Neo4j update
+    return jsonify({'status': 'not implemented'})
+
+@buscard_bp.route('/node/delete', methods=['POST'])
+def delete_node():
+    data = request.json
+    node_ids = data.get('nodeIds')    
+    result = delete_file_nodes(node_ids)
     return jsonify(result)
     
+@buscard_bp.route('/node/move', methods=['POST'])
+def move_node():
+    data = request.json
+    node_ids = data.get('nodeIds')
+    destination = data.get('destination')
+    # TODO: define move semantics
+    return jsonify({'status': 'not implemented'})
 
 @buscard_bp.route('/load')
 def load():

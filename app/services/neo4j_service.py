@@ -149,6 +149,27 @@ def build_filenode_search_query(search_paths, properties, return_fields=None):
     query = "\n".join(query_parts)
     return query, params
 
+def delete_file_node(node_id):
+    return delete_file_nodes([node_id])
+
+def delete_file_nodes(node_ids):
+    if not node_ids:
+        return {'status': 'error', 'message': 'No node IDs provided'}
+    
+    query = """
+        MATCH (n:FileNode)
+        WHERE n.`FILE-NODE-id` IN $node_ids
+        WITH collect(n) as nodes, count(n) as deleted
+        FOREACH (n in nodes | DETACH DELETE n)
+        RETURN deleted
+    """
+    with neo4j.get_session() as session:
+        result = session.run(query, parameters={'node_ids': node_ids})
+        record = result.single()
+        deleted_count = record['deleted'] if record else 0
+    
+    return {'status': 'ok', 'deleted': deleted_count}
+
 def normalize_path_for_cypher(path_string):
     """Convert path to Cypher-ready string matching Windows format in DB"""
     normalized = Path(path_string)
