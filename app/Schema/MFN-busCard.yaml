@@ -2,50 +2,59 @@ META-FILE-NODE: BusinessCard_20260121
 
 # Identity
 name: "Business Card"
-# root placement path used to build filepath
 path: "E:\\Reference\\BusinessCards"
-
-# Collection purpose
 description: "Business card scans via dropbox or other, collected in-person or received"
 purpose: "Searchable contact source information. Professional connections, trades and other service providers"
 
-# Schema Definition:
+# System fields — rendered readonly, never in add-field picker
+system_properties:
+  - FILE-NODE-id
+  - filepath
+
+# Editable properties — render order is form order
 core_properties:
-  - description
-  - category
-  - contact_name
-  - phone
-  - context_note
+  description:
+    textarea: true
+    description: "Brief description of services, products, or what this contact provides"
+  category:
+    description: "Type of service or business (electrician, lawyer, artist, food sales, etc.)"
+  contact_name:
+    label: "Contact Name"
+    description: "Name of person on the card"
+  phone:
+    description: "Business phone number or direct to provider"
+  context_note:
+    textarea: true
+    label: "Context Note"
+    description: "My notes on where and how I got the card. Also reminders of meeting importance"
 
 optional_properties:
-  - phone-1-800
-  - cell
-  - fax
-  - email
-  - company
-  - location
-  - instagram
-  - url
-  - recommendation
+  phone-1-800:
+    label: "1-800 Number"
+    description: "Toll-free number"
+  cell:
+    description: "Is texting appropriate? Mobile opportunities?"
+  fax:
+    description: "Fax number. Not likely needed — just for completeness."
+  email:
+    description: "Company or individual's formal contact"
+  company:
+    description: "Company or business name. Could be a non-profit, etc."
+  location:
+    description: "Business address or location"
+  instagram:
+    description: "Instagram handle or social media. May start with @"
+  url:
+    label: "URL"
+    description: "Additional web information for company branding"
+  recommendation:
+    textarea: true
+    description: "Recommending person or body"
 
-property_descriptions:
-  description: "Brief description of services, products, or what this contact provides"
-  category: "Type of service or business (electrician, lawyer, artist, food sales, etc.)"
-  company: "Company or business name. Could be a non-profit, etc."
-  contact_name: "Name of person on the card"
-  phone: "Business phone number or direct to provider"
-  phone-1-800: "Toll-free number"
-  cell: "Is texting appropriate? Mobile opportunities?"
-  fax: "Fax number. Not likely needed.. just for completeness."
-  email: "Company or individuals formal contact"
-  instagram: "Instagram handle or social media. May start with @"
-  location: "Business address or location"
-  url: "additional web information for company branding"
-  context_note: "My notes on where and how I got the card. Also reminders of meeting importance"
-  recommendation: "recommending person or body" 
-
-
-# Processing Rules
+# LEGACY: file processing pipeline — not used by review UI
+user_review_required: true
+relocatable: true
+review_priority: 5
 patterns: '[
   {"pattern_type": "filename_contains", "pattern_value": "busCard", "confidence": 0.95},
   {"pattern_type": "filename_contains", "pattern_value": "Buscard", "confidence": 0.95},
@@ -53,12 +62,6 @@ patterns: '[
   {"pattern_type": "filename_contains", "pattern_value": "busCardish", "confidence": 0.85},
   {"pattern_type": "file_extension", "pattern_value": ".pdf", "confidence": 0.3}
 ]'
-
-
-# other metrics
-user_review_required: true
-relocatable: true 
-review_priority: 5
-remove_source: 
+remove_source:
   value: ask
   allowed: [move, ask, dup]
