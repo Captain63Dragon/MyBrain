@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
-from app.services.neo4j_service import create_nodes, ensure_filenode_constraint
+from app.services.neo4j_service import create_nodes, create_mfn_node 
+from app.services.neo4j_service import ensure_filenode_constraint, ensure_mfn_constraint
 from app.services.neo4j_service import delete_file_nodes, update_file_node
 from app.services.neo4j_service import normalize_path_for_cypher, search_for_file_node
 from app.services.schema_service import load_mfn, parse_gfn, map_properties, parse_user_search_input
@@ -91,30 +92,21 @@ def move_node():
     destination = data.get('destination')
     # TODO: define move semantics
     return jsonify({'status': 'not implemented'})
-
+   
 @buscard_bp.route('/load')
 def load():
-    # Parse MFN and GFN and load nodes into Neo4j for testing
     mfn_path = os.path.join('app', 'Schema', 'MFN-busCard.yaml')
     gfn_path = os.path.join('app', 'Schema', 'GFN-busCard-dropbox_001.yaml')
     mfn = load_mfn(mfn_path)
     nodes = parse_gfn(gfn_path)
     label = mfn.get('name', 'Business Card').replace(' ', '')
-    meta_label = f"Meta{label}"
     mapped = [map_properties(mfn, n) for n in nodes]
 
     from app.models import neo4j
     with neo4j.driver.session() as session:
-        # Ensure constraint exists first
         ensure_filenode_constraint(session)
-        
-        # Create/update the nodes
-        # Normalize the MFN into a proper single-file-node dict and
-        # serialize any nested structures (Neo4j node properties must be scalars or lists)
-        meta_node = map_properties(mfn, mfn)
-        create_nodes(session, meta_label, [meta_node])  # fake a single node with the multi add function
+        ensure_mfn_constraint(session)
+        create_mfn_node(session, mfn)
         create_nodes(session, label, mapped)
 
     return f"Loaded {len(mapped)} FileNodes into Neo4j label:{label}:FileNode"
-    
-

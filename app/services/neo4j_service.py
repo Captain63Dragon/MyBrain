@@ -1,7 +1,7 @@
 # Services required to work with Graph database Neo4j.
-
 from app.models import neo4j
 from pathlib import Path
+import json
 
 def ensure_filenode_constraint(session):
     """Ensure the FILE-NODE-id uniqueness constraint exists on FileNode label"""
@@ -16,6 +16,79 @@ def ensure_filenode_constraint(session):
     except Exception as e:
         print(f"Warning: Could not create FileNode constraint: {e}")
         return False
+
+def ensure_mfn_constraint(session):
+    """Ensure the MFN-id uniqueness constraint exists on MetaFileNode label"""
+    try:
+        session.write_transaction(
+            lambda tx: tx.run(
+                "CREATE CONSTRAINT IF NOT EXISTS "
+                "FOR (m:MetaFileNode) REQUIRE m.`MFN-id` IS UNIQUE"
+            )
+        )
+        return True
+    except Exception as e:
+        print(f"Warning: Could not create MetaFileNode constraint: {e}")
+        return False
+
+def serialize_mfn_node(mfn):
+    """
+    Serialize a loaded MFN yaml dict into flat Neo4j-compatible properties.
+    core_properties and optional_properties are dicts — serialize as JSON strings.
+    system_properties is a list — stays as native Neo4j list.
+    Legacy/pipeline fields included as-is with fallback serialization.
+    """
+    json_fields = {
+        'core_properties', 'optional_properties',
+        'remove_source', 'system_properties'
+    }
+    # system_properties is a list — Neo4j can store it natively
+    list_fields = {
+        'system_properties'
+    }
+    skip_fields = {
+        'META-FILE-NODE'
+    }
+
+    props = {}
+    for k, v in mfn.items():
+        if k in skip_fields:
+            continue
+        if k in list_fields:
+            props[k] = v if isinstance(v, list) else [v]
+        elif k in json_fields:
+            props[k] = json.dumps(v)
+        elif isinstance(v, (dict, list)):
+            props[k] = json.dumps(v)
+        else:
+            props[k] = v
+
+    return props
+
+
+def create_mfn_node(session, mfn):
+    """
+    Create or update a MetaFileNode in Neo4j from a loaded MFN dict.
+    Labels: MetaFileNode (universal) + Meta{Name} (specific)
+    e.g. MetaFileNode:MetaBusinessCard
+    """
+    name = mfn.get('name', 'Unknown').replace(' ', '')
+    specific_label = f"Meta{name}"
+    node_id = mfn.get('MFN-id')
+
+    props = serialize_mfn_node(mfn)
+    props.pop('MFN-id', None)
+
+    for k, v in list(props.items()):
+        if isinstance(v, str) and v.strip() == '':
+            props[k] = None
+
+    session.write_transaction(
+        lambda tx, nid=node_id, p=props: tx.run(
+            f"MERGE (m:MetaFileNode:{specific_label} {{`MFN-id`: $nid}}) SET m += $p",
+            nid=nid, p=p
+        )
+    )
 
 # Given a node label like BusinessCard and a list of nodes to create from a Grouped-File-Node yaml source file
 # generate the Cypher and execute to load into the Neo4j database
@@ -84,21 +157,26 @@ def search_for_file_node(search_paths=None, properties=None):
         List of matching nodes with their properties
     """
     if search_paths is None:
-        # search_paths = get_default_search_paths()  # your "usual places"
         search_paths = ["C:\\Users\\termi\\dropbox\\"]
     if properties is None:
-        # This generates all nodes in these paths
         properties = {}
+
     query, params = build_filenode_search_query(search_paths, properties)
     debug_query = query
     for key, value in params.items():
         debug_query = debug_query.replace(f'${key}', f"'{value}'")
-    # print(f"Debug query with substitutions:\n{debug_query}")
-    # Execute and return results
+
     with neo4j.get_session() as session:
         result = session.run(query, parameters=params)
-        records = [record.data() for record in result]    
-        return [{'debug_query': debug_query}] + records
+        records = [record.data() for record in result]
+
+        # TODO: MFN-id should be derived from context when multiple MFN types exist
+        mfn_result = session.run(
+            "MATCH (m:MetaFileNode {`MFN-id`: 'BusinessCard_20260121'}) RETURN m"
+        ).single()
+        mfn = {'meta_file_node': dict(mfn_result['m'])} if mfn_result else {}
+
+    return [{'debug_query': debug_query}] + ([mfn] if mfn else []) + records
 
 def build_filenode_search_query(search_paths, properties, return_fields=None):
     """Build Cypher query dynamically based on filters

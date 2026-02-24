@@ -9,10 +9,8 @@ def load_mfn(mfn_path):
         node = yaml.safe_load(fh)
         if isinstance(node, dict) and node.get('META-FILE-NODE') is not None:
             #add a filenode id for this meta file node
-            nodeid = node.get('META-FILE-NODE')
-            node['FILE-NODE-id'] = nodeid
+            node['MFN-id'] = node.get('META-FILE-NODE')
         return node
-
 
 def parse_gfn(gfn_path):
     text = open(gfn_path, "r", encoding="utf-8").read()

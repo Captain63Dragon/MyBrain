@@ -1,25 +1,10 @@
 /* eslint-disable no-unused-vars */
 const formDirtyStates = new Map();
 // Map fnode properties to td classes
-export const fieldMapping = {
-    'node': 'FILE-NODE-id',
-    'category': 'category',
-    'company': 'company',
-    'contact': 'contact_name',
-    'phone': 'phone',
-    'cell': 'cell',
-    'email': 'email',
-    'description': 'description',
-    'context': 'context_note',
-    'filepath': 'filepath',
-    'reviewed': 'reviewed'
-};
-
-const tableColumns = ['node', 'category', 'contact', 'phone', 'cell', 'description', 'filepath'];
-const tableMapping = Object.fromEntries(
-    Object.entries(fieldMapping).filter(([key]) => tableColumns.includes(key))
-);
-
+// Build fieldMapping from MFN
+let mfn = null;
+let fieldMapping = null;
+let tableMapping = null;
 
 // #### initialization for after DOM is loaded ####
 export function initContentTabs() {
@@ -202,8 +187,8 @@ document.getElementById('execute-action').addEventListener('click', async () => 
                     const form = getFormByNodeId(update.nodeId);
                     if (form) {
                         formDirtyStates.delete(form);
-                        form.querySelector('.save-btn').disabled = true;
-                        form.querySelector('.reset-btn').disabled = true;
+                        form.querySelector('.btn-primary').disabled = true;
+                        form.querySelector('.btn-secondary').disabled = true;
                     }
                 } else {
                     console.error('Update failed for', update.nodeId, result);
@@ -315,7 +300,7 @@ function getCheckedDirtyCount() {
 // Get selected record IDs
 function getSelectedRecordIds() {
     const recordCheckboxes = document.querySelectorAll('.record-checkbox')
-    console.log ("Selected Rows", recordCheckboxes)
+    // console.log ("Selected Rows", recordCheckboxes)
     const selected = [];
     recordCheckboxes.forEach(cb => {
         if (cb.checked) {
@@ -349,15 +334,16 @@ function getFormFields(form) {
     return fields;
 }
 
-function createRecordPanel(record, rootpath, cnt) {
+function createRecordPanel(record, rootpath, cnt, mfn) {
+
     const stc = document.createElement('div')
     stc.id = `record${cnt}`
     stc.className = 'sub-tab-content'
     if (cnt === 1) stc.classList.add('active')
     const recordForm = document.createElement('form')
     recordForm.className = 'record-form'
-    // Helper function to create form groups
-    function createFormGroup(label, id, name, value, readonly = false, isTextarea = false) {
+
+    function createFormGroup(label, id, name, value, readonly = false, isTextarea = false, placeholder = '') {
         const group = document.createElement('div');
         group.className = 'form-group';
         
@@ -379,28 +365,53 @@ function createRecordPanel(record, rootpath, cnt) {
         input.id = id;
         input.name = name;
         if (readonly) input.readOnly = true;
+        if (placeholder) input.placeholder = placeholder;
         
         group.appendChild(labelEl);
         group.appendChild(input);
         return group;
     }
 
-        // Create recordForm fields
+    function toLabel(prop) {
+        return prop.replace(/-/g, ' ').replace(/_/g, ' ')
+                   .replace(/\b\w/g, c => c.toUpperCase()) + ':';
+    }
+
+    function addPropertyField(prop, meta) {
+        const label = meta.label ? meta.label + ':' : toLabel(prop);
+        const id = `${prop}${cnt}`;
+        const value = record[prop];
+        const isTextarea = meta.textarea === true;
+        const placeholder = meta.description || '';
+        recordForm.appendChild(createFormGroup(label, id, id, value, false, isTextarea, placeholder));
+    }
+
+    // --- System field: Node ID (readonly, always first) ---
     const nodeGroup = createFormGroup('Node ID:', `node${cnt}`, `node${cnt}`, record['FILE-NODE-id'], true);
-    // nodeId captured here for closure scope in listeners. Also accessible via the dataset nodeId.
     const nodeId = nodeGroup.querySelector('input[name^="node"]').value;
     recordForm.dataset.nodeId = nodeId;
     recordForm.dataset.cnt = cnt;
     recordForm.appendChild(nodeGroup);
-    recordForm.appendChild(createFormGroup('Category:', `category${cnt}`, `category${cnt}`, record['category']));
-    recordForm.appendChild(createFormGroup('Company:', `company${cnt}`, `company${cnt}`, record['company']));
-    recordForm.appendChild(createFormGroup('Contact Name:', `contact${cnt}`, `contact${cnt}`, record['contact_name']));
-    recordForm.appendChild(createFormGroup('Phone:', `phone${cnt}`, `phone${cnt}`, record['phone']));
-    recordForm.appendChild(createFormGroup('Email:', `email${cnt}`, `email${cnt}`, record['email']));
-    recordForm.appendChild(createFormGroup('Description:', `description${cnt}`, `description${cnt}`, record['description'], false, true));
-    recordForm.appendChild(createFormGroup('Context Note:', `context${cnt}`, `context${cnt}`, record['context_note'], false, true));
+
+    // --- Core properties: always render ---
+    for (const [prop, meta] of Object.entries(mfn.core_properties)) {
+        addPropertyField(prop, meta);
+    }
+
+    // --- Optional properties: render if node has a value ---
+    for (const [prop, meta] of Object.entries(mfn.optional_properties)) {
+        const val = record[prop];
+        if (val !== undefined && val !== null && val !== '') {
+            addPropertyField(prop, meta);
+        }
+    }
+
+    // TODO: "Add field" control for empty optional properties goes here
+
+    // --- System field: filepath (readonly, always last) ---
     recordForm.appendChild(createFormGroup('File Path:', `filepath${cnt}`, `filepath${cnt}`, record['filepath'], true));
-    // Create form actions
+
+    // --- Form actions --- unchanged
     const actions = document.createElement('div');
     actions.className = 'form-actions';
     
@@ -408,13 +419,13 @@ function createRecordPanel(record, rootpath, cnt) {
     saveBtn.type = 'submit';
     saveBtn.className = 'btn btn-primary';
     saveBtn.textContent = 'Save Changes';
-    saveBtn.disabled = true;  // TODO: could this be set to the actual value here?
+    saveBtn.disabled = true;
     
     const resetBtn = document.createElement('button');
     resetBtn.type = 'reset';
     resetBtn.className = 'btn btn-secondary';
     resetBtn.textContent = 'Reset';
-    resetBtn.disabled = true; // TODO: could this be set to the actual value here?
+    resetBtn.disabled = true;
 
     const reviewedCB = document.createElement('input');
     reviewedCB.type = 'checkbox';
@@ -516,56 +527,80 @@ function createSubTab (record, cnt) {
 }
 
 function updateUpdateForms(data, rootpath) {
-    // console.log("In updateUpdateForms",data, rootpath)
-    const [debugQuery, ...fnodes] = data;
-    if (!debugQuery) { // I dont think this fails; just for linter. 
-        console.log('Debug query is invalid:', debugQuery);
-}
-    if (!fnodes || fnodes.length === 0) {
-        console.log(`Full results node data not found ${data}`, data)
-        return
+    let debugQuery = null;
+    const fnodes = [];
+
+    for (const item of data) {
+        if (item.debug_query) { debugQuery = item; continue; }
+        if (item.meta_file_node) continue;  // already handled in updateReviewForm
+        fnodes.push(item);
     }
-    // find sub tab div and hide all current buttons. 
+
+    if (!debugQuery) console.log('Debug query is invalid:', debugQuery);
+    if (!fnodes || fnodes.length === 0) {
+        console.log(`Full results node data not found`, data);
+        return;
+    }
+
     const tabContainer = document.getElementById('update-pane');
-    tabContainer.innerHTML = '' // start fresh
-    const recordTabs = document.createElement('div')
-    recordTabs.className = 'sub-tabs'
-    //   for each record tab button content
+    tabContainer.innerHTML = '';
+    const recordTabs = document.createElement('div');
+    recordTabs.className = 'sub-tabs';
+
     fnodes.forEach((fnode, i) => {
         recordTabs.appendChild(createSubTab(fnode['fnode'], i+1));
     });
-    tabContainer.appendChild(recordTabs)
-    
-    fnodes.forEach((fnode, i )=> {
-        tabContainer.appendChild(createRecordPanel(fnode['fnode'], rootpath, i+1))
+    tabContainer.appendChild(recordTabs);
+
+    fnodes.forEach((fnode, i) => {
+        tabContainer.appendChild(createRecordPanel(fnode['fnode'], rootpath, i+1, mfn));
     });
-} 
+}
 
 function updateReviewForm(data, rootpath) {
-    const [debugQuery, ...fnodes] = data;
-    if (!debugQuery) {
-        console.log("Debug Query invalid:", debugQuery)
+    // Extract known metadata items first, collect real fnodes
+    let debugQuery = null;
+    const fnodes = [];
+
+    for (const item of data) {
+        if (item.debug_query) { debugQuery = item; continue; }
+        if (item.meta_file_node) {
+            mfn = item.meta_file_node;
+            mfn.core_properties = JSON.parse(mfn.core_properties);
+            mfn.optional_properties = JSON.parse(mfn.optional_properties);
+            // Build fieldMapping and tableMapping now that mfn is available
+            fieldMapping = { 'node': 'FILE-NODE-id', 'filepath': 'filepath', 'reviewed': 'reviewed' };
+            for (const prop of Object.keys(mfn.core_properties)) fieldMapping[prop] = prop;
+            for (const prop of Object.keys(mfn.optional_properties)) fieldMapping[prop] = prop;
+            const tableColumns = ['node', 'category', 'contact_name', 'phone', 'cell', 'description', 'filepath'];
+            tableMapping = Object.fromEntries(
+                tableColumns
+                    .filter(key => key in fieldMapping)
+                    .map(key => [key, fieldMapping[key]])
+            );
+            continue;
+        }
+        fnodes.push(item);
     }
-    if (!fnodes || fnodes.length === 0) {
-        console.log(`Full results node data not found ${data}`, data)
-        return
-    }
-    const container = document.querySelector('.list')
-    container.querySelector('.root-path').textContent = rootpath
-    const tableBody = container.querySelector('#search-path-rows')
-    tableBody.innerHTML = ''
+
+    if (!debugQuery) console.log("Debug Query invalid:", debugQuery);
+    if (!fnodes.length) { console.log(`Full results node data not found`, data); return; }
+
+    const container = document.querySelector('.list');
+    container.querySelector('.root-path').textContent = rootpath;
+    const tableBody = container.querySelector('#search-path-rows');
+    tableBody.innerHTML = '';
     fnodes.forEach(fnode => {
         tableBody.appendChild(createRow(fnode['fnode'], rootpath));
     });
 
-    // Unhide list and update tabs and show list tab
     document.querySelector('[data-tab="update"]').classList.remove('hidden');
-    const tab2 = document.querySelector('[data-tab="list"]')
+    const tab2 = document.querySelector('[data-tab="list"]');
     tab2.classList.remove('hidden');
     tab2.click();
-    // console.log(data)
     document.getElementById('results').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
 }
+
 // #### Utilities ####
 function truncate(str, maxLength) {
   return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
