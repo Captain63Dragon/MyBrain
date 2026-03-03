@@ -1,9 +1,20 @@
 from flask import Blueprint, render_template, request, jsonify
-from app.services.neo4j_service import create_nodes, create_mfn_node 
-from app.services.neo4j_service import ensure_filenode_constraint, ensure_mfn_constraint
-from app.services.neo4j_service import delete_file_nodes, update_file_node
-from app.services.neo4j_service import normalize_path_for_cypher, search_for_file_node
+from app.services.neo4j_service import (
+    create_nodes,
+    create_mfn_node,
+    ensure_filenode_constraint,
+    ensure_mfn_constraint,
+    delete_file_nodes,
+    update_file_node,
+    process_discovery_results,
+    search_for_file_node,
+    process_copy_results,
+    process_move_results,
+    create_dispatch_node,
+)
 from app.services.schema_service import load_mfn, parse_gfn, map_properties, parse_user_search_input
+from app.shared.mfi_shared import DiscoveryMFI, write_mfi
+from app.shared.mfi_shared import CopyMFI, MoveMFI
 import json
 import os
 
@@ -64,6 +75,93 @@ def query_service(service_key):
     filters = parse_user_search_input(form_data['property_filter'])
     
     result = search_for_file_node(paths, filters)
+    return jsonify(result)
+
+@buscard_bp.route('/dispatch', methods=['POST'])
+def dispatch_action():
+    data    = request.json or {}
+    action  = data.get('action')
+    mfn_id  = data.get('mfn_id')
+    node_id = data.get('node_id')
+
+    if not action:
+        return jsonify({'error': 'action is required'}), 400
+    if action == 'discovery':
+        if not mfn_id:
+            return jsonify({'error': 'discovery requires mfn_id'}), 400
+    else:
+        if not all([mfn_id, node_id]):
+            return jsonify({'error': 'mfn_id and node_id are required'}), 400
+    if action == 'insitu_copy':
+        source = data.get('source')
+        target = data.get('target')
+        if not all([source, target]):
+            return jsonify({'error': 'insitu_copy requires source and target'}), 400
+        mfi = CopyMFI(source=source, target=target, node_id=node_id, mfn_id=mfn_id, intent='insitu_copy')
+
+    elif action == 'copy_master_source':
+        source = data.get('source')
+        target = data.get('target')
+        if not all([source, target]):
+            return jsonify({'error': 'copy requires source and target'}), 400
+        mfi = CopyMFI(source=source, target=target, node_id=node_id, mfn_id=mfn_id, intent='master_source')
+
+    elif action == 'copy_master_target':
+        source = data.get('source')
+        target = data.get('target')
+        if not all([source, target]):
+            return jsonify({'error': 'copy requires source and target'}), 400
+        mfi = CopyMFI(source=source, target=target, node_id=node_id, mfn_id=mfn_id, intent='master_target')
+
+    elif action == 'move':
+        source = data.get('source')
+        target = data.get('target')
+        if not all([source, target]):
+            return jsonify({'error': 'move requires source and target'}), 400
+        mfi = MoveMFI(source=source, target=target, node_id=node_id, mfn_id=mfn_id, intent='move')
+
+    elif action == 'archive':
+        source = data.get('source')
+        target = data.get('target')
+        if not all([source, target]):
+            return jsonify({'error': 'archive requires source and target'}), 400
+        mfi = MoveMFI(source=source, target=target, node_id=node_id, mfn_id=mfn_id, intent='archive')
+
+    elif action == 'discovery':
+        scan_path = data.get('source')
+        patterns  = data.get('patterns', [])
+        if not scan_path:
+            return jsonify({'error': 'discovery requires source'}), 400
+        mfi = DiscoveryMFI(mfn_id=mfn_id, source=scan_path, patterns=patterns)
+
+    else:
+        return jsonify({'error': f'Unknown action: {action}'}), 400
+
+    written = write_mfi(mfi)
+    create_dispatch_node(mfi.mfi_id, mfi.action, mfn_id, data.get('source', ''))
+
+    return jsonify({'status': 'queued', 'mfi_id': mfi.mfi_id, 'action': action, 'intent': getattr(mfi, 'intent', ''), 'action': action})
+
+@buscard_bp.route('/process', methods=['POST'])
+def process_action():
+    data   = request.json or {}
+    action = data.get('action')
+
+    if not action:
+        return jsonify({'error': 'action is required'}), 400
+
+    if action == 'discovery':
+        result = process_discovery_results()
+
+    elif action == 'copy':
+        result = process_copy_results()
+
+    elif action == 'move':
+        result = process_move_results()
+
+    else:
+        return jsonify({'error': f'Unknown action: {action}'}), 400
+
     return jsonify(result)
 
 @buscard_bp.route('/node/update', methods=['POST'])

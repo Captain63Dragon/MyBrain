@@ -1,9 +1,9 @@
-from flask import Flask
-from neo4j import GraphDatabase
-from app.routes.buscard_routes import buscard_bp
-# from app.routes.timeline_routes import timeline_bp
 
 def create_app():
+    from flask import Flask
+    from neo4j import GraphDatabase
+    from app.routes.buscard_routes import buscard_bp
+    # from app.routes.timeline_routes import timeline_bp
     app = Flask(__name__)
     app.config.from_object('config.Config')
     # remove the following when TODO: to cache static files

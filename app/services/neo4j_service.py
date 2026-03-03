@@ -2,6 +2,23 @@
 from app.models import neo4j
 from pathlib import Path
 import json
+from datetime import datetime
+from app.scripts.mfn_search_dir import BusinessCardEvaluator
+from app.services.filesystem_service import (
+    mfn_to_schema, 
+    build_node_fields, 
+    suggest_file_node_id,
+    suggest_secondary_id,
+    derive_file_node_id,
+)
+
+from app.shared.mfi_shared import (
+    decode,
+    completed_path,
+    move_to_processing,
+    CopyResultMFI,
+)
+
 
 def ensure_filenode_constraint(session):
     """Ensure the FILE-NODE-id uniqueness constraint exists on FileNode label"""
@@ -146,6 +163,15 @@ def get_file_nodes():
         result = session.run(query)
         return [dict(record) for record in result]
 
+def get_mfn_patterns(mfn_id: str) -> list:
+    """Extract filename_contains patterns from a MetaFileNode."""
+    with neo4j.get_session() as session:
+        mfn = get_mfn(mfn_id, session)
+        if not mfn:
+            return []
+        return [p['pattern_value'] for p in mfn.get('patterns', [])
+                if p.get('pattern_type') == 'filename_contains']
+
 def search_for_file_node(search_paths=None, properties=None):
     """Retrieve all paths and filenodes matching search criteria.
     
@@ -157,26 +183,99 @@ def search_for_file_node(search_paths=None, properties=None):
         List of matching nodes with their properties
     """
     if search_paths is None:
+        # search_paths = get_default_search_paths()  # your "usual places"
         search_paths = ["C:\\Users\\termi\\dropbox\\"]
     if properties is None:
+        # This generates all nodes in these paths
         properties = {}
-
     query, params = build_filenode_search_query(search_paths, properties)
     debug_query = query
     for key, value in params.items():
         debug_query = debug_query.replace(f'${key}', f"'{value}'")
-
+    # print(f"Debug query with substitutions:\n{debug_query}")
+    # Execute and return results
     with neo4j.get_session() as session:
         result = session.run(query, parameters=params)
-        records = [record.data() for record in result]
+        records = [record.data() for record in result]    
 
-        # TODO: MFN-id should be derived from context when multiple MFN types exist
         mfn_result = session.run(
             "MATCH (m:MetaFileNode {`MFN-id`: 'BusinessCard_20260121'}) RETURN m"
         ).single()
         mfn = {'meta_file_node': dict(mfn_result['m'])} if mfn_result else {}
 
     return [{'debug_query': debug_query}] + ([mfn] if mfn else []) + records
+
+def scan_directory_to_nodes(scan_path: str, mfn_id: str, min_confidence: float = 0.5) -> dict:
+    with neo4j.get_session() as session:
+
+        mfn = get_mfn(mfn_id, session)
+        if not mfn:
+            return {'error': f'MFN not found: {mfn_id}'}
+
+        schema    = mfn_to_schema(mfn)
+        evaluator = BusinessCardEvaluator(schema)
+        matches   = evaluator.evaluate_directory(scan_path, min_confidence=min_confidence)
+
+        results = {'created': [], 'exists': [], 'errors': []}
+
+        for metadata in matches:
+            try:
+                checker = lambda pid: not verify_FNid_exists(pid)[0]
+                node_id = suggest_file_node_id(metadata.filepath, checker)
+
+                exists, _ = verify_FNid_exists(node_id)
+                if exists:
+                    bucket = 'exists'
+                else:
+                    fields = build_node_fields(metadata, mfn)
+                    create_node(session, 'BusinessCard', {**fields, 'FILE-NODE-id': node_id})
+                    bucket = 'created'
+
+            except Exception as e:
+                bucket = 'errors'
+                results[bucket].append({
+                    'node_id':    getattr(metadata, 'filename', 'unknown'),
+                    'filename':   metadata.filename,
+                    'confidence': metadata.confidence_score,
+                    'error':      str(e),
+                })
+                continue
+
+            results[bucket].append({
+                'node_id':    node_id,
+                'filename':   metadata.filename,
+                'confidence': metadata.confidence_score,
+            })
+
+        return {
+            'status':  'ok',
+            'mfn_id':  mfn_id,
+            'path':    scan_path,
+            'matched': len(matches),
+            'created': len(results['created']),
+            'exists':  len(results['exists']),
+            'errors':  len(results['errors']),
+            'detail':  results,
+        }
+
+def get_mfn(mfn_id: str, session) -> dict | None:
+    """Pull a MetaFileNode from Neo4j, deserialize JSON string fields."""
+    result = session.run(
+        "MATCH (m:MetaFileNode {`MFN-id`: $id}) RETURN m",
+        id=mfn_id
+    )
+    record = result.single()
+    if not record:
+        return None
+    props = dict(record['m'])
+    for field in ('core_properties', 'optional_properties', 'patterns', 'remove_source'):
+        if field in props and isinstance(props[field], str):
+            try:
+                props[field] = json.loads(props[field])
+            except json.JSONDecodeError:
+                pass
+    return props
+
 
 def build_filenode_search_query(search_paths, properties, return_fields=None):
     """Build Cypher query dynamically based on filters
@@ -273,3 +372,415 @@ def normalize_path_for_cypher(path_string):
         cypher_path += '\\\\'
     
     return cypher_path
+
+def write_os_result(session, mfi, status: str, errors: list, created_node_id: str = ''):
+    session.run("""
+        MATCH (d:Dispatch {`mfi-id`: $source_mfi_id})
+        WHERE NOT (d)-[:RESULTED_IN]->()
+        CREATE (r:OSResult {
+            mfi_id:          $mfi_id,
+            status:          $status,
+            intent:          $intent,
+            node_id:         $node_id,
+            created_node_id: $created_node_id,
+            errors:          $errors,
+            error_count:     $error_count,
+            created:         $created
+        })
+        CREATE (d)-[:RESULTED_IN]->(r)
+        SET d.status = $status
+    """,
+        source_mfi_id    = mfi.source_mfi_id,
+        mfi_id           = mfi.mfi_id,
+        status           = status,
+        intent           = mfi.intent,
+        node_id          = mfi.node_id,
+        created_node_id  = created_node_id,
+        errors           = errors,
+        error_count      = len(errors),
+        created          = datetime.now().isoformat()
+    )
+
+def create_dispatch_node(mfi_id: str, action: str, mfn_id: str, source: str) -> dict:
+    """
+    Create a Dispatch node in Neo4j when an MFI is written to pending.
+    Links to the MFN that orchestrated it.
+    """
+    query = """
+        MATCH (m:MetaFileNode {`MFN-id`: $mfn_id})
+        CREATE (d:Dispatch {
+            `mfi-id`:   $mfi_id,
+            action:     $action,
+            source:     $source,
+            status:     'pending',
+            created:    $created
+        })
+        CREATE (m)-[:ORCHESTRATES]->(d)
+        RETURN d
+    """
+    with neo4j.get_session() as session:
+        result = session.run(query,
+            mfi_id=mfi_id,
+            action=action,
+            mfn_id=mfn_id,
+            source=source,
+            created=datetime.now().isoformat()
+        )
+        record = result.single()
+        return {'status': 'ok'} if record else {'status': 'error'}
+    
+def make_checker(session):
+    # create a closure that uses the passed in session to check for existing nodes
+    def checker(pid):
+        result = session.run(
+            "MATCH (n:FileNode {`FILE-NODE-id`: $id}) RETURN n",
+            id=pid
+        )
+        return result.single() is None
+    return checker
+
+def process_discovery_results() -> dict:
+    """
+    Read completed/ folder, process scan_directory_result MFI files.
+    For each matched file: create FileNode, link to Dispatch via CREATED.
+    Create OSResult node, link to Dispatch via RESULTED_IN.
+    """
+    from app.shared.mfi_shared import (
+        decode, completed_path, DiscoveryResultMFI
+    )
+
+    completed = completed_path()
+    print(f"Looking in: {completed}")
+    if not completed.exists():
+        return {'status': 'ok', 'processed': 0, 'message': 'completed/ empty'}
+
+    mfi_files = list(completed.glob('*.mfi'))
+    print(f"Files found: {mfi_files}")
+    if not mfi_files:
+        return {'status': 'ok', 'processed': 0, 'message': 'nothing to process'}
+
+    summary = {'processed': 0, 'nodes_created': 0, 'errors': []}
+
+    with neo4j.get_session() as session:
+        checker = make_checker(session)
+        for mfi_path in mfi_files:
+            try:
+                mfi = decode(str(mfi_path))
+                print(f"Decoded: {type(mfi).__name__} - {mfi.action}")
+                print(f"isinstance check: {isinstance(mfi, DiscoveryResultMFI)}")
+
+                if not isinstance(mfi, DiscoveryResultMFI):
+                    continue                    # not ours — leave it
+
+                # ── Process each matched file ─────────────────────────────────
+                for file_entry in mfi.files:
+                    try:
+                        node_id = derive_file_node_id(file_entry['filepath'], file_entry.get('mtime', ''))
+                        print(f"[discovery] filepath: {file_entry['filepath']}")
+                        print(f"[discovery] generated node_id: {node_id}")
+
+                        already_exists = not checker(node_id)
+                        print(f"[discovery] exists={already_exists}")
+
+                        fields = {
+                            'filepath':        file_entry['filepath'],
+                            'reviewed':        False,
+                            'review_priority': 5,
+                            'pattern_matched': file_entry.get('mask_matched', ''),
+                            'descriptor':      file_entry.get('descriptor', ''),
+                            'date':            file_entry.get('date') or file_entry.get('mtime', ''),
+                        }
+
+                        print(f"[discovery] fields: {fields}")
+                        print(f"[discovery] source_mfi_id: {mfi.source_mfi_id}")
+
+                        result = session.run("""
+                            MATCH (n:FileNode {filepath: $filepath})-[:INSITU_COPY_OF]->()
+                            RETURN n
+                        """, filepath=file_entry['filepath'])
+
+                        if result.single():
+                            print(f"[discovery] INSITU — skipping: {node_id}")
+                            summary.setdefault('insitu', []).append(node_id)
+                            continue
+
+                        session.run("""
+                            MATCH (d:Dispatch {`mfi-id`: $source_mfi_id})
+                            MERGE (n:FileNode {`FILE-NODE-id`: $node_id})
+                            ON CREATE SET n += $fields, n:`BusinessCard`
+                            CREATE (d)-[:CREATED]->(n)
+                            RETURN n
+                        """,
+                            source_mfi_id = mfi.source_mfi_id,
+                            node_id       = node_id,
+                            fields        = fields
+                        )
+
+                        if already_exists:
+                            summary.setdefault('collisions', []).append(node_id)
+                            print(f"[discovery] COLLISION: {node_id}")
+                        else:
+                            summary['nodes_created'] += 1
+                            print(f"[discovery] CREATED: {node_id}")
+
+                    except Exception as e:
+                        print(f"[discovery] ERROR: {file_entry.get('filepath')} — {e}")
+                        summary['errors'].append({
+                            'filepath': file_entry.get('filepath', 'unknown'),
+                            'error':    str(e)
+                        })
+
+                # ── OSResult — after all file work, before unlink ─────────────
+                status = 'failure(s)' if summary.get('errors') else 'completed'
+                session.run("""
+                    MATCH (d:Dispatch {`mfi-id`: $source_mfi_id})
+                    WHERE NOT (d)-[:RESULTED_IN]->()
+                    CREATE (r:OSResult {
+                        mfi_id:          $mfi_id,
+                        status:          $status,
+                        file_count:      $file_count,
+                        nodes_created:   $nodes_created,
+                        collisions:      $collisions,
+                        collision_count: $collision_count,
+                        errors:          $errors,
+                        error_count:     $error_count,
+                        created:         $created
+                    })
+                    CREATE (d)-[:RESULTED_IN]->(r)
+                    SET d.status = $status
+                    RETURN r
+                """,
+                    source_mfi_id   = mfi.source_mfi_id,
+                    mfi_id          = mfi.mfi_id,
+                    file_count      = len(mfi.files),
+                    nodes_created   = summary.get('nodes_created', 0),
+                    collisions      = summary.get('collisions', []),
+                    collision_count = len(summary.get('collisions', [])),
+                    errors          = [e['error'] for e in summary.get('errors', [])],
+                    error_count     = len(summary.get('errors', [])),
+                    status          = status,
+                    created         = datetime.now().isoformat()
+                )
+
+                mfi_path.unlink()               # after graph work — no ghost state
+                summary['processed'] += 1
+
+            except Exception as e:
+                summary['errors'].append({
+                    'file': mfi_path.name,
+                    'error': str(e)
+                })
+
+    summary['status'] = 'ok'
+    return summary
+
+def process_copy_results() -> dict:
+    """
+    Read completed/ folder, process copy_result MFI files.
+    Branches on intent:
+        insitu_copy   — update original filepath, create stub node, INSITU_COPY_OF
+        master_source — source is master, create secondary at target, COPY_OF
+        master_target — target is master, update master filepath, create secondary at source, COPY_OF
+    """
+    from app.shared.mfi_shared import (
+        decode, move_to_processing, completed_path, CopyResultMFI
+    )
+
+    completed = completed_path()
+    if not completed.exists():
+        return {'status': 'ok', 'processed': 0, 'message': 'completed/ empty'}
+
+    mfi_files = list(completed.glob('*.mfi'))
+    if not mfi_files:
+        return {'status': 'ok', 'processed': 0, 'message': 'nothing to process'}
+
+    summary = {'processed': 0, 'errors': []}
+
+    with neo4j.get_session() as session:
+        checker = make_checker(session)
+        for mfi_path in mfi_files:
+            try:
+                mfi = decode(str(mfi_path))
+                if not isinstance(mfi, CopyResultMFI):
+                    continue
+                mfi_path.unlink()
+                if not mfi.success:
+                    err = mfi.error
+                    print(f"[copy] OS failed: {err}")
+                    write_os_result(session, mfi, status='failed', errors=[err])
+                    summary['errors'].append({'mfi': mfi_path.name, 'error': err})
+                    summary['processed'] += 1
+                    continue
+
+                matched = session.run("""
+                    MATCH (n:FileNode {`FILE-NODE-id`: $node_id})
+                    RETURN count(n) AS matched
+                """, node_id=mfi.node_id).single()['matched']
+
+                if matched == 0:
+                    err = f"Node not found in graph: {mfi.node_id}"
+                    print(f"[copy] {err}")
+                    write_os_result(session, mfi, status='failed', errors=[err])
+                    summary['errors'].append({'mfi': mfi_path.name, 'error': err})
+                    summary['processed'] += 1
+                    continue
+
+                if mfi.intent == 'insitu_copy':
+                    created_node_id = mfi.node_id + '_insitu'
+
+                    session.run("""
+                        MATCH (original:FileNode {`FILE-NODE-id`: $node_id})
+                        SET original.filepath = $target
+                        MERGE (stub:FileNode {`FILE-NODE-id`: $stub_id})
+                        ON CREATE SET stub.filepath = $source,
+                                      stub.reviewed = true,
+                                      stub.review_priority = 0
+                        MERGE (stub)-[:INSITU_COPY_OF]->(original)
+                        WITH stub
+                        MATCH (d:Dispatch {`mfi-id`: $source_mfi_id})
+                        CREATE (d)-[:CREATED]->(stub)
+                    """,
+                        node_id       = mfi.node_id,
+                        stub_id       = created_node_id,
+                        source        = mfi.source,
+                        target        = mfi.target,
+                        source_mfi_id = mfi.source_mfi_id,
+                    )
+                    print(f"[copy] insitu_copy: {mfi.node_id} → stub: {created_node_id}")
+
+                elif mfi.intent == 'master_source':
+                    created_node_id = suggest_secondary_id(mfi.node_id, checker)
+
+                    session.run("""
+                        MATCH (master:FileNode {`FILE-NODE-id`: $node_id})
+                        MERGE (secondary:FileNode {`FILE-NODE-id`: $secondary_id})
+                        ON CREATE SET secondary.filepath = $target,
+                                      secondary.reviewed = true,
+                                      secondary.review_priority = 0
+                        MERGE (secondary)-[:COPY_OF]->(master)
+                        WITH secondary
+                        MATCH (d:Dispatch {`mfi-id`: $source_mfi_id})
+                        CREATE (d)-[:CREATED]->(secondary)
+                    """,
+                        node_id       = mfi.node_id,
+                        secondary_id  = created_node_id,
+                        target        = mfi.target,
+                        source_mfi_id = mfi.source_mfi_id,
+                    )
+                    print(f"[copy] master_source: {mfi.node_id} → secondary: {created_node_id}")
+
+                elif mfi.intent == 'master_target':
+                    created_node_id = suggest_secondary_id(mfi.node_id, checker)
+
+                    session.run("""
+                        MATCH (master:FileNode {`FILE-NODE-id`: $node_id})
+                        SET master.filepath = $target
+                        MERGE (secondary:FileNode {`FILE-NODE-id`: $secondary_id})
+                        ON CREATE SET secondary.filepath = $source,
+                                      secondary.reviewed = true,
+                                      secondary.review_priority = 0
+                        MERGE (secondary)-[:COPY_OF]->(master)
+                        WITH secondary
+                        MATCH (d:Dispatch {`mfi-id`: $source_mfi_id})
+                        CREATE (d)-[:CREATED]->(secondary)
+                    """,
+                        node_id       = mfi.node_id,
+                        secondary_id  = created_node_id,
+                        source        = mfi.source,
+                        target        = mfi.target,
+                        source_mfi_id = mfi.source_mfi_id,
+                    )
+                    print(f"[copy] master_target: {mfi.node_id} → secondary: {created_node_id}")
+
+                else:
+                    print(f"[copy] Unknown intent: {mfi.intent} — skipping")
+                    summary['errors'].append({'mfi': mfi_path.name, 'error': f"Unknown intent: {mfi.intent}"})
+                    summary['processed'] += 1
+                    continue                    # no Dispatch to link — no OSResult
+
+                write_os_result(session, mfi, status='completed', errors=[],
+                                created_node_id=created_node_id)
+                summary['processed'] += 1
+                
+            except Exception as e:
+                print(f"[copy] ERROR: {mfi_path.name} — {e}")
+                summary['errors'].append({'file': mfi_path.name, 'error': str(e)})
+
+    summary['status'] = 'ok'
+    return summary
+
+def process_move_results() -> dict:
+    """
+    Read completed/ folder, process move_result MFI files.
+    Branches on intent:
+        move    — update filepath on existing node
+        archive — update filepath + set archived flag
+    """
+    from app.shared.mfi_shared import (
+        decode, completed_path, MoveResultMFI
+    )
+
+    completed = completed_path()
+    if not completed.exists():
+        return {'status': 'ok', 'processed': 0, 'message': 'completed/ empty'}
+
+    mfi_files = list(completed.glob('*.mfi'))
+    if not mfi_files:
+        return {'status': 'ok', 'processed': 0, 'message': 'nothing to process'}
+
+    summary = {'processed': 0, 'errors': []}
+
+    with neo4j.get_session() as session:
+        for mfi_path in mfi_files:
+            try:
+                mfi = decode(str(mfi_path))
+                if not isinstance(mfi, MoveResultMFI):
+                    continue
+                mfi_path.unlink() 
+                if not mfi.success:
+                    print(f"[move] Skipping failed move: {mfi.error}")
+                    summary['errors'].append({'mfi': mfi_path.name, 'error': mfi.error})
+                    move_to_processing(mfi_path)
+                    summary['processed'] += 1
+                    continue
+
+                if mfi.intent == 'move':
+                    result = session.run("""
+                        MATCH (n:FileNode {`FILE-NODE-id`: $node_id})
+                        SET n.filepath = $target
+                        RETURN count(n) AS matched
+                    """, node_id=mfi.node_id, target=mfi.target)
+
+                elif mfi.intent == 'archive':
+                    result = session.run("""
+                        MATCH (n:FileNode {`FILE-NODE-id`: $node_id})
+                        SET n.filepath = $target,
+                            n.archived  = true
+                        RETURN count(n) AS matched
+                    """, node_id=mfi.node_id, target=mfi.target)
+
+                else:
+                    print(f"[move] Unknown intent: {mfi.intent} — skipping")
+                    summary['errors'].append({'mfi': mfi_path.name, 'error': f"Unknown intent: {mfi.intent}"})
+                    summary['processed'] += 1
+                    continue                    # no Dispatch to link — no OSResult
+
+                matched = result.single()['matched']
+                if matched == 0:
+                    err = f"Node not found in graph: {mfi.node_id}"
+                    print(f"[move] {err}")
+                    write_os_result(session, mfi, status='failed', errors=[err])
+                    summary['errors'].append({'mfi': mfi_path.name, 'error': err})
+                    summary['processed'] += 1
+                    continue
+
+                print(f"[move] {mfi.intent}: {mfi.node_id} → {mfi.target}")
+                write_os_result(session, mfi, status='completed', errors=[])
+                summary['processed'] += 1
+
+            except Exception as e:
+                print(f"[move] ERROR: {mfi_path.name} — {e}")
+                summary['errors'].append({'file': mfi_path.name, 'error': str(e)})
+                
+    summary['status'] = 'ok'
+    return summary

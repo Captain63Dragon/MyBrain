@@ -23,8 +23,10 @@ services:
       - NEO4J_SCHEMA_VERSION=METAFILENODE
       - FLASK_ENV=development
       - FLASK_DEBUG=1
+      - MFI_PATH=/mfi
     volumes:
       - .:/app
+      - ${MFI_PATH}:/mfi
     depends_on:
       - mybrain-neo4j
     networks:

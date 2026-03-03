@@ -270,6 +270,90 @@ select:disabled {
     padding-top: 15px;
     border-top: 1px solid #ddd;
 }
+.add-field-picker {
+    margin-bottom: 15px;
+    position: relative;
+    display: inline-block;
+}
+
+.btn-add-field {
+    padding: 6px 12px;
+    font-size: 13px;
+    background: #fff;
+    color: #555;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+}
+
+.btn-add-field:hover {
+    border-color: #999;
+    color: #333;
+}
+
+.add-field-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    min-width: 200px;
+    z-index: 100;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+}
+
+.add-field-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: #555;
+}
+
+.add-field-item:hover {
+    background: #f5f5f5;
+}
+
+.add-field-item input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.add-field-item label {
+    cursor: pointer;
+    font-weight: normal;
+    margin: 0;
+    color: #555;
+}
+
+.btn-add-field-confirm {
+    display: block;
+    width: 100%;
+    padding: 7px 12px;
+    font-size: 13px;
+    background: #555;
+    color: #fff;
+    border: none;
+    border-radius: 0 0 3px 3px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+.btn-add-field-confirm:hover:not(:disabled) {
+    background: #333;
+}
+
+.btn-add-field-confirm:disabled {
+    background: #ccc;
+    cursor: default;
+}
 
 .btn {
     padding: 10px 20px;

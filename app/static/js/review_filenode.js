@@ -181,15 +181,18 @@ document.getElementById('execute-action').addEventListener('click', async () => 
                 const result = await response.json();
 
                 if (result.status === 'ok') {
-                    const row = document.getElementById(update.nodeId);
-                    row.classList.remove('row-edited');
-                    row.classList.add('row-saved');
                     const form = getFormByNodeId(update.nodeId);
                     if (form) {
+                        // Update baselines so reset reverts to saved values not pre-save values
+                        form.querySelectorAll('input[type="text"]').forEach(i => i.defaultValue = i.value);
+                        form.querySelectorAll('textarea').forEach(t => t.defaultValue = t.value);
                         formDirtyStates.delete(form);
                         form.querySelector('.btn-primary').disabled = true;
                         form.querySelector('.btn-secondary').disabled = true;
                     }
+                    const row = document.getElementById(update.nodeId);
+                    row.classList.remove('row-edited');
+                    row.classList.add('row-saved');
                 } else {
                     console.error('Update failed for', update.nodeId, result);
                 }
@@ -323,50 +326,169 @@ function getFormByNodeId(nodeId) {
 }
 
 function getFormFields(form) {
+    console.log('fieldMapping:', fieldMapping);
+    console.log('cnt:', cnt);
+    Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
+        if (formKey === 'node') return;
+        const el = form.querySelector(`[name="${formKey}${cnt}"]`);
+        console.log(`${formKey}${cnt} ->`, el ? el.type : 'NOT FOUND', el ? el.value : '');
+    });
     const cnt = form.dataset.cnt;
     const fields = {};
     Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
         if (formKey === 'node') return;
         const el = form.querySelector(`[name="${formKey}${cnt}"]`);
         if (!el) return;
-        fields[nodeKey] = el.type === 'checkbox' ? el.checked : el.value;
+        // Skip hidden optional fields
+        const group = el.closest('.form-group');
+        if (el.type !== 'checkbox' && (!group || group.style.display === 'none')) return;
+        if (el.type === 'checkbox') {
+            fields[nodeKey] = el.checked;
+        } else if (el.value === '' && el.defaultValue !== '') {
+            // Intentional clear — explicitly null so caller can decide
+            fields[nodeKey] = null;
+        } else if (el.value !== '') {
+            fields[nodeKey] = el.value;
+        }
+        // empty and was empty — skip entirely
     });
     return fields;
 }
 
+function createAddFieldPicker(optionalGroups, mfn) {
+    const container = document.createElement('div');
+    container.className = 'add-field-picker';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-add-field';
+    btn.textContent = '▸ Add Field';
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'add-field-dropdown';
+    dropdown.style.display = 'none';
+
+    function getHidden() {
+        return Object.entries(optionalGroups)
+            .filter(([, grp]) => grp.style.display === 'none');
+    }
+
+    function updateVisibility() {
+        container.style.display = getHidden().length === 0 ? 'none' : '';
+    }
+
+    function buildDropdown() {
+        dropdown.innerHTML = '';
+        const hidden = getHidden();
+        const checkedKeys = new Set();
+
+        hidden.forEach(([prop]) => {
+            const meta = mfn.optional_properties[prop];
+            const itemLabel = meta.label ? meta.label : prop.replace(/-/g, ' ').replace(/_/g, ' ')
+                .replace(/\b\w/g, c => c.toUpperCase());
+
+            const item = document.createElement('div');
+            item.className = 'add-field-item';
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = prop;
+            cb.id = `picker-${prop}`;
+            cb.addEventListener('change', () => {
+                cb.checked ? checkedKeys.add(prop) : checkedKeys.delete(prop);
+                addBtn.disabled = checkedKeys.size === 0;
+                addBtn.textContent = checkedKeys.size > 0
+                    ? `Add ${checkedKeys.size} Field${checkedKeys.size > 1 ? 's' : ''}`
+                    : 'Add Fields';
+            });
+
+            const lbl = document.createElement('label');
+            lbl.htmlFor = `picker-${prop}`;
+            lbl.textContent = itemLabel;
+
+            item.appendChild(cb);
+            item.appendChild(lbl);
+            dropdown.appendChild(item);
+        });
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'btn-add-field-confirm';
+        addBtn.textContent = 'Add Fields';
+        addBtn.disabled = true;
+
+        addBtn.addEventListener('click', () => {
+            checkedKeys.forEach(prop => {
+                optionalGroups[prop].style.display = '';
+            });
+            dropdown.style.display = 'none';
+            btn.textContent = '▸ Add Field';
+            updateVisibility();
+        });
+
+        dropdown.appendChild(addBtn);
+    }
+
+    btn.addEventListener('click', () => {
+        if (dropdown.style.display === 'none') {
+            buildDropdown();
+            dropdown.style.display = '';
+            btn.textContent = '▾ Add Field';
+        } else {
+            dropdown.style.display = 'none';
+            btn.textContent = '▸ Add Field';
+        }
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+            dropdown.style.display = 'none';
+            btn.textContent = '▸ Add Field';
+        }
+    });
+
+    container.update = updateVisibility;
+    container.appendChild(btn);
+    container.appendChild(dropdown);
+    updateVisibility();
+    return container;
+}
+
 function createRecordPanel(record, rootpath, cnt, mfn) {
 
-    const stc = document.createElement('div')
-    stc.id = `record${cnt}`
-    stc.className = 'sub-tab-content'
-    if (cnt === 1) stc.classList.add('active')
-    const recordForm = document.createElement('form')
-    recordForm.className = 'record-form'
+    const stc = document.createElement('div');
+    stc.id = `record${cnt}`;
+    stc.className = 'sub-tab-content';
+    if (cnt === 1) stc.classList.add('active');
+    const recordForm = document.createElement('form');
+    recordForm.className = 'record-form';
 
     function createFormGroup(label, id, name, value, readonly = false, isTextarea = false, placeholder = '') {
         const group = document.createElement('div');
         group.className = 'form-group';
-        
+
         const labelEl = document.createElement('label');
         labelEl.setAttribute('for', id);
         labelEl.textContent = label;
-        
+
         let input;
         if (isTextarea) {
             input = document.createElement('textarea');
             input.textContent = value || '';
+            input.defaultValue = value || '';
         } else {
             input = document.createElement('input');
             input.type = 'text';
             input.value = value || '';
             input.defaultValue = value || '';
         }
-        
+
         input.id = id;
         input.name = name;
         if (readonly) input.readOnly = true;
         if (placeholder) input.placeholder = placeholder;
-        
+
         group.appendChild(labelEl);
         group.appendChild(input);
         return group;
@@ -377,13 +499,19 @@ function createRecordPanel(record, rootpath, cnt, mfn) {
                    .replace(/\b\w/g, c => c.toUpperCase()) + ':';
     }
 
-    function addPropertyField(prop, meta) {
+    function addPropertyField(prop, meta, hidden = false) {
         const label = meta.label ? meta.label + ':' : toLabel(prop);
         const id = `${prop}${cnt}`;
         const value = record[prop];
         const isTextarea = meta.textarea === true;
         const placeholder = meta.description || '';
-        recordForm.appendChild(createFormGroup(label, id, id, value, false, isTextarea, placeholder));
+        const group = createFormGroup(label, id, id, value, false, isTextarea, placeholder);
+        if (hidden) {
+            group.style.display = 'none';
+            group.dataset.originallyEmpty = 'true';
+        }
+        recordForm.appendChild(group);
+        return group;
     }
 
     // --- System field: Node ID (readonly, always first) ---
@@ -395,41 +523,43 @@ function createRecordPanel(record, rootpath, cnt, mfn) {
 
     // --- Core properties: always render ---
     for (const [prop, meta] of Object.entries(mfn.core_properties)) {
-        addPropertyField(prop, meta);
+        addPropertyField(prop, meta, false);
     }
 
-    // --- Optional properties: render if node has a value ---
+    // --- Optional properties: render all, hide if unpopulated ---
+    const optionalGroups = {};
     for (const [prop, meta] of Object.entries(mfn.optional_properties)) {
         const val = record[prop];
-        if (val !== undefined && val !== null && val !== '') {
-            addPropertyField(prop, meta);
-        }
+        const isEmpty = val === undefined || val === null || val === '';
+        optionalGroups[prop] = addPropertyField(prop, meta, isEmpty);
     }
 
-    // TODO: "Add field" control for empty optional properties goes here
+    // --- Add field picker ---
+    const picker = createAddFieldPicker(optionalGroups, mfn);
+    recordForm.appendChild(picker);
 
     // --- System field: filepath (readonly, always last) ---
     recordForm.appendChild(createFormGroup('File Path:', `filepath${cnt}`, `filepath${cnt}`, record['filepath'], true));
 
-    // --- Form actions --- unchanged
+    // --- Form actions ---
     const actions = document.createElement('div');
     actions.className = 'form-actions';
-    
+
     const saveBtn = document.createElement('button');
     saveBtn.type = 'submit';
-    saveBtn.className = 'btn btn-primary';
+    saveBtn.className = 'btn btn-primary save-btn';
     saveBtn.textContent = 'Save Changes';
     saveBtn.disabled = true;
-    
+
     const resetBtn = document.createElement('button');
     resetBtn.type = 'reset';
-    resetBtn.className = 'btn btn-secondary';
+    resetBtn.className = 'btn btn-secondary reset-btn';
     resetBtn.textContent = 'Reset';
     resetBtn.disabled = true;
 
     const reviewedCB = document.createElement('input');
     reviewedCB.type = 'checkbox';
-    reviewedCB.id = `reviewed${cnt}`; 
+    reviewedCB.id = `reviewed${cnt}`;
     reviewedCB.name = `reviewed${cnt}`;
     reviewedCB.checked = record.reviewed ?? false;
     reviewedCB.className = 'my-checkbox-class';
@@ -443,19 +573,25 @@ function createRecordPanel(record, rootpath, cnt, mfn) {
     actions.appendChild(label);
     recordForm.appendChild(actions);
 
+    // --- Listeners ---
     resetBtn.addEventListener('click', () => {
         recordForm.reset();
-        // console.log("Reset Btn")
     });
 
     recordForm.addEventListener('reset', () => {
+        // Re-hide optional fields that were originally empty
+        for (const [, group] of Object.entries(optionalGroups)) {
+            if (group.dataset.originallyEmpty === 'true') {
+                group.style.display = 'none';
+            }
+        }
+        picker.update();
         formDirtyStates.set(recordForm, false);
         saveBtn.disabled = true;
         resetBtn.disabled = true;
         const row = document.getElementById(nodeId);
         row.classList.remove('row-edited');
-        // console.log("Reset form", recordForm)
-        updateBulkActions()
+        updateBulkActions();
     });
 
     reviewedCB.addEventListener('change', (e) => {
@@ -465,7 +601,7 @@ function createRecordPanel(record, rootpath, cnt, mfn) {
         } else {
             row.classList.remove('row-reviewed');
         }
-    })
+    });
 
     recordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -481,7 +617,6 @@ function createRecordPanel(record, rootpath, cnt, mfn) {
         const result = await response.json();
 
         if (result.status === 'ok') {
-            // Baseline defaults to saved values for revert
             recordForm.querySelectorAll('input[type="text"]').forEach(input => {
                 input.defaultValue = input.value;
             });
@@ -500,8 +635,8 @@ function createRecordPanel(record, rootpath, cnt, mfn) {
             console.error('Save failed for', nodeId, result);
         }
     });
-    
-    formDirtyStates.set(recordForm, false)
+
+    formDirtyStates.set(recordForm, false);
     stc.appendChild(recordForm);
     return stc;
 }
