@@ -4,6 +4,8 @@ from pathlib import Path
 import json
 from datetime import datetime
 from app.scripts.mfn_search_dir import BusinessCardEvaluator
+from app.services.schema_service import load_mfn, parse_gfn, map_properties
+from app.services.mfi_broker import push_result
 from app.services.filesystem_service import (
     mfn_to_schema, 
     build_node_fields, 
@@ -11,6 +13,7 @@ from app.services.filesystem_service import (
     suggest_secondary_id,
     derive_file_node_id,
 )
+
 
 from app.shared.mfi_shared import (
     decode,
@@ -561,6 +564,12 @@ def process_discovery_results() -> dict:
                     status          = status,
                     created         = datetime.now().isoformat()
                 )
+                push_result(mfi.mfi_id, {
+                    'status':        status,
+                    'nodes_created': summary.get('nodes_created', 0),
+                    'collisions':    len(summary.get('collisions', [])),
+                    'errors':        len(summary.get('errors', []))
+                })
 
                 mfi_path.unlink()               # after graph work — no ghost state
                 summary['processed'] += 1
@@ -608,6 +617,7 @@ def process_copy_results() -> dict:
                     err = mfi.error
                     print(f"[copy] OS failed: {err}")
                     write_os_result(session, mfi, status='failed', errors=[err])
+                    push_result(mfi.mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
                     summary['errors'].append({'mfi': mfi_path.name, 'error': err})
                     summary['processed'] += 1
                     continue
@@ -621,6 +631,7 @@ def process_copy_results() -> dict:
                     err = f"Node not found in graph: {mfi.node_id}"
                     print(f"[copy] {err}")
                     write_os_result(session, mfi, status='failed', errors=[err])
+                    push_result(mfi.mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
                     summary['errors'].append({'mfi': mfi_path.name, 'error': err})
                     summary['processed'] += 1
                     continue
@@ -700,6 +711,12 @@ def process_copy_results() -> dict:
 
                 write_os_result(session, mfi, status='completed', errors=[],
                                 created_node_id=created_node_id)
+                push_result(mfi.mfi_id, {
+                    'status': 'completed', 
+                    'intent': mfi.intent, 
+                    'node_id': mfi.node_id, 
+                    'created_node_id': created_node_id
+                })
                 summary['processed'] += 1
                 
             except Exception as e:
@@ -770,12 +787,14 @@ def process_move_results() -> dict:
                     err = f"Node not found in graph: {mfi.node_id}"
                     print(f"[move] {err}")
                     write_os_result(session, mfi, status='failed', errors=[err])
+                    push_result(mfi.mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
                     summary['errors'].append({'mfi': mfi_path.name, 'error': err})
                     summary['processed'] += 1
                     continue
 
                 print(f"[move] {mfi.intent}: {mfi.node_id} → {mfi.target}")
                 write_os_result(session, mfi, status='completed', errors=[])
+                push_result(mfi.mfi_id, {'status': 'completed', 'intent': mfi.intent, 'node_id': mfi.node_id})
                 summary['processed'] += 1
 
             except Exception as e:
@@ -784,3 +803,27 @@ def process_move_results() -> dict:
                 
     summary['status'] = 'ok'
     return summary
+
+def manual_load(mfn_path):
+    folders, mfn = load_seed_folders(mfn_path)
+    for folder in folders:
+        pass # HORRORS!
+        # dispatch_discovery(folder, mfn)
+        
+def get_seed_folders(session):
+    pass
+
+def load_seed_folders(mfn_path):
+    mfn    = load_mfn(mfn_path) 
+    nodes  = parse_gfn(mfn_path)  # gfn and mfn are in the same location currently 
+    label  = mfn.get('name', 'Business Card').replace(' ', '')
+    mapped = [map_properties(mfn, n) for n in nodes]
+
+    with neo4j.get_session() as session:
+        ensure_filenode_constraint(session)
+        ensure_mfn_constraint(session)
+        create_mfn_node(session, mfn)
+        create_nodes(session, label, mapped)
+        folders = get_seed_folders(session)
+
+    return folders, mfn

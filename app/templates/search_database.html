@@ -9,7 +9,12 @@
             <label style="display: block; margin-bottom: 8px; font-weight: 500;">Entity ID</label>
             <input type="text" name="entity_id" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
         </div>
-
+        <div id="sse-test-panel" style="margin: 20px 0; padding: 15px; border: 1px solid #444;">
+            <h3>SSE Test</h3>
+            <button id="btn-sse-test">Start SSE Test</button>
+            <p id="sse-status" style="color: #aaa;">Idle</p>
+            <ul id="sse-output"></ul>
+        </div>
         <div style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 8px; font-weight: 500;">Action Type</label>
             <select name="action_type" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">

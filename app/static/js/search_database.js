@@ -156,5 +156,42 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("no action type selected");
         }
     });   
+
+    document.getElementById('btn-sse-test').addEventListener('click', async (e) => {
+        e.preventDefault();
+        const status  = document.getElementById('sse-status');
+        const output  = document.getElementById('sse-output');
+        output.innerHTML = '';
+        status.textContent = 'Starting...';
+
+        // Step 1 — kick off the background task
+        const res = await fetch('/sse/test-start', { method: 'POST' });
+        const { stream_id } = await res.json();
+
+        // Step 2 — open the stream
+        status.textContent = 'Running...';
+        const source = new EventSource(`/sse/test-stream/${stream_id}`);
+
+        source.onmessage = (event) => {
+            if (event.data === '__done__') {
+                status.textContent = 'Done.';
+                source.close();
+                return;
+            }
+            if (event.data === '__error__') {
+                status.textContent = 'Error — stream not found.';
+                source.close();
+                return;
+            }
+            const li = document.createElement('li');
+            li.textContent = event.data;
+            output.appendChild(li);
+        };
+
+        source.onerror = () => {
+            status.textContent = 'Stream error or closed.';
+            source.close();
+        };
+    });
 });
 
