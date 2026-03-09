@@ -26,7 +26,7 @@ myBrain-2026/
 │   │   └── display_service.py         # Prepare nodes for templates
 │   ├── Schema/                        # Your domain data
 │   │   ├── MFN-busCard.yaml
-│   │   ├── GFN-busCard-dropbox_001.yaml
+│   │   ├── GFN-busCard-dropbox.yaml
 │   └── models/                        # Optional: Python classes
 │       └── neo4j_connection.py        # Your neo4j_conn setup
 ├── tests/

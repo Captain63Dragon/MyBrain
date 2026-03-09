@@ -2,7 +2,7 @@
 """Parse MFN/MFN-style YAML and GFN file-node blocks and load them into Neo4j.
 
 Usage: python -m app.scripts.load_buscards_to_neo4j --mfn app/Schema/MFN-busCard.yaml \
-       --gfn app/Schema/GFN-busCard-dropbox_001.yaml --uri bolt://localhost:7687
+       --gfn app/Schema/GFN-busCard-dropbox.yaml --uri bolt://localhost:7687
 Environment: NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD are supported.
 """
 import os
@@ -22,7 +22,7 @@ def main(argv=None):
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--mfn", default=os.path.join("app", "Schema", "MFN-busCard.yaml"))
-    parser.add_argument("--gfn", default=os.path.join("app", "Schema", "GFN-busCard-dropbox_001.yaml"))
+    parser.add_argument("--gfn", default=os.path.join("app", "Schema", "GFN-busCard-dropbox.yaml"))
     parser.add_argument("--uri", default=os.getenv("NEO4J_URI", "bolt://localhost:7687"))
     parser.add_argument("--user", default=os.getenv("NEO4J_USER", "neo4j"))
     parser.add_argument("--password", default=os.getenv("NEO4J_PASSWORD", "neo4j"))

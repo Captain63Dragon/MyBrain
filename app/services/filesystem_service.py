@@ -6,6 +6,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Callable, Optional, Tuple
 from app.scripts.mfn_search_dir import MetaFileNodeSchema
+from app.services.schema_service import load_mfn, parse_gfn, map_properties, get_src_folders
+from app.shared.mfi_shared import DiscoveryMFI, write_mfi
 
 def _extract_date_from_string(s: str) -> Optional[Tuple[datetime, int, int]]:
     """Try several filename date patterns and return a datetime.date if found.
@@ -339,3 +341,46 @@ def build_node_fields(metadata, mfn: dict) -> dict:
         if val:
             fields[key] = val
     return fields
+
+def load_seed_folders(mfn_path):
+    from app.services.neo4j_service import load_gfn_nodes
+    import glob
+    mfn_dir  = os.path.dirname(mfn_path)
+    gfn_path = glob.glob(os.path.join(mfn_dir, 'GFN-*.yaml'))
+    if not gfn_path:
+        raise FileNotFoundError(f"No GFN YAML found in {mfn_dir}")
+    gfn_path = gfn_path[0]
+    mfn    = load_mfn(mfn_path)
+    nodes  = parse_gfn(gfn_path)
+    label  = mfn.get('name', 'Business Card').replace(' ', '')
+    mapped = [map_properties(mfn, n) for n in nodes]
+    print(f"[debug] nodes: {len(nodes)}, mapped: {len(mapped)}")
+    if mapped:
+        print(f"[debug] first mapped: {mapped[0]}")
+    load_gfn_nodes(mfn, label, mapped)
+    folders = get_src_folders(mapped)
+    return folders, mfn
+
+
+def dispatch_discovery(folder: str, mfn: dict) -> str:
+    """
+    Write a DiscoveryMFI to pending/ and create a Dispatch node.
+    Returns mfi_id for SSE tracking.
+    """
+    from app.services.neo4j_service import create_dispatch_node
+    mfn_id   = mfn.get('MFN-id', '')
+    patterns = [p['pattern_value'] for p in json.loads(mfn.get('patterns', '[]'))
+            if p.get('pattern_type') == 'filename_contains']
+    mfi = DiscoveryMFI(mfn_id=mfn_id, source=folder, patterns=patterns)
+    write_mfi(mfi)
+    create_dispatch_node(mfi.mfi_id, mfi.action, mfn_id, folder)  # ⚠️ confirm signature
+    return mfi.mfi_id
+
+
+def manual_load(mfn_path) -> list[str]:
+    """
+    Load MFN + GFN into graph, dispatch a DiscoveryMFI per src_folder.
+    Returns list of mfi_ids for the route to hand to the SSE stream.
+    """
+    folders, mfn = load_seed_folders(mfn_path)
+    return [dispatch_discovery(folder, mfn) for folder in folders]

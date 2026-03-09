@@ -326,6 +326,7 @@ function getFormByNodeId(nodeId) {
 }
 
 function getFormFields(form) {
+    const cnt = form.dataset.cnt
     console.log('fieldMapping:', fieldMapping);
     console.log('cnt:', cnt);
     Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
@@ -333,7 +334,6 @@ function getFormFields(form) {
         const el = form.querySelector(`[name="${formKey}${cnt}"]`);
         console.log(`${formKey}${cnt} ->`, el ? el.type : 'NOT FOUND', el ? el.value : '');
     });
-    const cnt = form.dataset.cnt;
     const fields = {};
     Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
         if (formKey === 'node') return;

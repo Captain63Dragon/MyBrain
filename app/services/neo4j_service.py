@@ -130,6 +130,35 @@ def create_nodes(session, label, nodes):
 
 def create_node( session, label, node):
     create_nodes( session, label, [node])
+
+def create_nodes_with_relationships(session, label: str, nodes: list):
+    for n in nodes:
+        related = n.pop('_related', [])
+        print(f"[import] {n.get('FILE-NODE-id')} — related: {len(related)}")        
+        # create master node
+        create_nodes(session, label, [n])
+        
+        # create stubs and wire relationships
+        for entry in related:
+            rel_type = entry['relationship']
+            stub = entry['node'].copy()
+            
+            # create stub node
+            create_nodes(session, label, [stub])
+            
+            # wire relationship
+            stub_id = stub.get('FILE-NODE-id')
+            master_id = n.get('FILE-NODE-id')
+            
+            session.write_transaction(lambda tx, sid=stub_id, mid=master_id, rt=rel_type: tx.run(
+                f"""
+                MATCH (stub:FileNode {{`FILE-NODE-id`: $stub_id}})
+                MATCH (master:FileNode {{`FILE-NODE-id`: $master_id}})
+                MERGE (stub)-[:{rt}]->(master)
+                """,
+                stub_id=sid,
+                master_id=mid
+            ))
     
 def verify_FNid_exists(self, node_id):
     """Verify FILE-NODE-id exists in database"""
@@ -468,6 +497,7 @@ def process_discovery_results() -> dict:
         checker = make_checker(session)
         for mfi_path in mfi_files:
             try:
+                dispatch_summary = {'nodes_created': 0,'collisions': [],'errors': [],'insitu': []}
                 mfi = decode(str(mfi_path))
                 print(f"Decoded: {type(mfi).__name__} - {mfi.action}")
                 print(f"isinstance check: {isinstance(mfi, DiscoveryResultMFI)}")
@@ -504,7 +534,7 @@ def process_discovery_results() -> dict:
 
                         if result.single():
                             print(f"[discovery] INSITU — skipping: {node_id}")
-                            summary.setdefault('insitu', []).append(node_id)
+                            dispatch_summary.setdefault('insitu', []).append(node_id)
                             continue
 
                         session.run("""
@@ -520,21 +550,21 @@ def process_discovery_results() -> dict:
                         )
 
                         if already_exists:
-                            summary.setdefault('collisions', []).append(node_id)
+                            dispatch_summary.setdefault('collisions', []).append(node_id)
                             print(f"[discovery] COLLISION: {node_id}")
                         else:
-                            summary['nodes_created'] += 1
+                            dispatch_summary['nodes_created'] += 1
                             print(f"[discovery] CREATED: {node_id}")
 
                     except Exception as e:
                         print(f"[discovery] ERROR: {file_entry.get('filepath')} — {e}")
-                        summary['errors'].append({
+                        dispatch_summary['errors'].append({
                             'filepath': file_entry.get('filepath', 'unknown'),
                             'error':    str(e)
                         })
 
                 # ── OSResult — after all file work, before unlink ─────────────
-                status = 'failure(s)' if summary.get('errors') else 'completed'
+                status = 'failure(s)' if dispatch_summary.get('errors') else 'completed'
                 session.run("""
                     MATCH (d:Dispatch {`mfi-id`: $source_mfi_id})
                     WHERE NOT (d)-[:RESULTED_IN]->()
@@ -556,19 +586,19 @@ def process_discovery_results() -> dict:
                     source_mfi_id   = mfi.source_mfi_id,
                     mfi_id          = mfi.mfi_id,
                     file_count      = len(mfi.files),
-                    nodes_created   = summary.get('nodes_created', 0),
-                    collisions      = summary.get('collisions', []),
-                    collision_count = len(summary.get('collisions', [])),
-                    errors          = [e['error'] for e in summary.get('errors', [])],
-                    error_count     = len(summary.get('errors', [])),
+                    nodes_created   = dispatch_summary.get('nodes_created', 0),
+                    collisions      = dispatch_summary.get('collisions', []),
+                    collision_count = len(dispatch_summary.get('collisions', [])),
+                    errors          = [e['error'] for e in dispatch_summary.get('errors', [])],
+                    error_count     = len(dispatch_summary.get('errors', [])),
                     status          = status,
                     created         = datetime.now().isoformat()
                 )
                 push_result(mfi.mfi_id, {
                     'status':        status,
-                    'nodes_created': summary.get('nodes_created', 0),
-                    'collisions':    len(summary.get('collisions', [])),
-                    'errors':        len(summary.get('errors', []))
+                    'nodes_created': dispatch_summary.get('nodes_created', 0),
+                    'collisions':    len(dispatch_summary.get('collisions', [])),
+                    'errors':        len(dispatch_summary.get('errors', []))
                 })
 
                 mfi_path.unlink()               # after graph work — no ghost state
@@ -804,26 +834,31 @@ def process_move_results() -> dict:
     summary['status'] = 'ok'
     return summary
 
-def manual_load(mfn_path):
-    folders, mfn = load_seed_folders(mfn_path)
-    for folder in folders:
-        pass # HORRORS!
-        # dispatch_discovery(folder, mfn)
-        
-def get_seed_folders(session):
-    pass
-
-def load_seed_folders(mfn_path):
-    mfn    = load_mfn(mfn_path) 
-    nodes  = parse_gfn(mfn_path)  # gfn and mfn are in the same location currently 
-    label  = mfn.get('name', 'Business Card').replace(' ', '')
-    mapped = [map_properties(mfn, n) for n in nodes]
-
+def load_gfn_nodes(mfn: dict, label: str, mapped: list[dict]):
     with neo4j.get_session() as session:
         ensure_filenode_constraint(session)
         ensure_mfn_constraint(session)
         create_mfn_node(session, mfn)
-        create_nodes(session, label, mapped)
-        folders = get_seed_folders(session)
-
-    return folders, mfn
+        create_nodes_with_relationships(session, label, mapped)
+       
+def get_export_nodes() -> list:
+    with neo4j.get_session() as session:
+        result = session.run("""
+            MATCH (n:FileNode)
+            WHERE NOT (n)-[:INSITU_COPY_OF]->()
+              AND NOT (n)-[:COPY_OF]->()
+            OPTIONAL MATCH (stub)-[r:INSITU_COPY_OF|COPY_OF]->(n)
+            RETURN n, 
+                   collect(
+                     CASE WHEN stub IS NOT NULL 
+                     THEN {rel: type(r), stub: properties(stub), stub_id: stub.`FILE-NODE-id`} 
+                     ELSE NULL END
+                   ) as related
+            ORDER BY n.`FILE-NODE-id`
+        """)
+        rows = []
+        for record in result:
+            node = dict(record['n'])
+            related = [r for r in record['related'] if r is not None]
+            rows.append({'node': node, 'related': related})
+    return rows

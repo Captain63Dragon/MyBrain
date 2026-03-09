@@ -15,6 +15,7 @@ from app.services.neo4j_service import (
 from app.services.schema_service import load_mfn, parse_gfn, map_properties, parse_user_search_input
 from app.shared.mfi_shared import DiscoveryMFI, write_mfi
 from app.shared.mfi_shared import CopyMFI, MoveMFI
+from pathlib import Path
 import json
 import os
 
@@ -191,10 +192,50 @@ def move_node():
     # TODO: define move semantics
     return jsonify({'status': 'not implemented'})
    
+@buscard_bp.route('/load-manual', methods=['GET'])
+def load_manual():
+    from app.services.filesystem_service import manual_load
+    mfn_path = os.path.join('app', 'Schema', 'MFN-busCard.yaml')
+    mfi_ids  = manual_load(mfn_path)
+    return jsonify({'mfi_ids': mfi_ids})
+
+@buscard_bp.route('/export', methods=['GET'])
+def export_gfn():
+    from app.services.neo4j_service import get_export_nodes
+    from app.services.schema_service import serialize_gfn
+    import os
+
+    try:
+        mfn_path = os.path.join('app', 'Schema', 'MFN-busCard.yaml')
+        export_dir = Path(os.path.dirname(mfn_path))
+        
+        rows = get_export_nodes()
+        mfn = load_mfn(mfn_path)
+        yaml_str = serialize_gfn(rows, mfn)
+
+        existing = sorted(export_dir.glob("GFN-busCard-dropbox_*.yaml"))
+        next_version = len(existing) + 1
+        versioned_name = f"GFN-busCard-dropbox_{next_version:03d}.yaml"
+        versioned_path = export_dir / versioned_name
+        active_path = export_dir / "GFN-busCard-dropbox_000.yaml"
+
+        versioned_path.write_text(yaml_str, encoding='utf-8')
+        active_path.write_text(yaml_str, encoding='utf-8')
+
+        return jsonify({
+            'status': 'ok',
+            'records': len(rows),
+            'versioned': versioned_name,
+            'active': 'GFN-busCard-dropbox_000.yaml'
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
 @buscard_bp.route('/load')
 def load():
     mfn_path = os.path.join('app', 'Schema', 'MFN-busCard.yaml')
-    gfn_path = os.path.join('app', 'Schema', 'GFN-busCard-dropbox_001.yaml')
+    gfn_path = os.path.join('app', 'Schema', 'GFN-busCard-dropbox.yaml')
     mfn = load_mfn(mfn_path)
     nodes = parse_gfn(gfn_path)
     label = mfn.get('name', 'Business Card').replace(' ', '')
