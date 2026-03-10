@@ -8,6 +8,7 @@ let tableMapping = null;
 
 // #### initialization for after DOM is loaded ####
 export function initContentTabs() {
+    // Switch tab or sub tab on click in button
     document.addEventListener('click', function(e) {
         // Click in the right pane?
         if (!document.getElementById('right-content').contains(e.target)) return;
@@ -19,6 +20,7 @@ export function initContentTabs() {
         // console.log("Sanity Check Tabs",isTab, isSubTab, tab, record)
         if (!isTab && !isSubTab) return; 
         if (isTab && tab) {
+            // event click in tab so switch content shown
             const container = document.getElementById('right-content');
             
             container.querySelectorAll('.tab-btn').forEach(b => {
@@ -28,7 +30,7 @@ export function initContentTabs() {
             container.querySelectorAll('.tab-pane').forEach(c => c.style.display = 'none');
             container.querySelector(`#${tab}-pane`).style.display = 'block';
         }
-        if (isSubTab && record) { // ie subtab
+        if (isSubTab && record) { // ie click in subtab
             const subContainer = document.getElementById('update-pane')
             subContainer.querySelectorAll('.sub-tab-btn').forEach(b => {
                 b.classList.remove('active');
@@ -41,7 +43,7 @@ export function initContentTabs() {
 
     // Update form changes
     const updatePane = document.getElementById('update-pane')
-    // updatePane.addEventListener('change', (e) => {
+    // input value changes for forms
     updatePane.addEventListener('input', (e) => {
         // filter out updates to reviewed checkbox
         if (e.target.name?.startsWith('reviewed')) return 
@@ -148,6 +150,34 @@ document.getElementById('delete-selected').addEventListener('click', async () =>
         } else {
             console.error('Delete failed:', result);
         }
+    }
+});
+
+document.getElementById('edit-selected').addEventListener('click', () => {
+    let checked = document.querySelectorAll('.record-checkbox:checked');
+    let targetRow;
+
+    if (checked.length === 0) {
+        const firstRow = document.querySelector('tr[id]');
+        if (!firstRow) return;
+        const nodeId = firstRow.id;
+        if (!confirm(`No selection. Edit first record: ${nodeId}?`)) return;
+        targetRow = firstRow;
+    } else {
+        targetRow = checked[0].closest('tr');
+    }
+
+    const nodeId = targetRow.id;
+
+    // switch to Review tab
+    document.querySelector('.tab-btn[data-tab="update"]').click();
+
+    // find matching sub-tab by row index
+    const rows = Array.from(document.querySelectorAll('tr[id]'));
+    const rowIndex = rows.indexOf(targetRow);
+    const subTabs = document.querySelectorAll('.sub-tab-btn');
+    if (subTabs[rowIndex]) {
+        subTabs[rowIndex].click();
     }
 });
 

@@ -323,7 +323,10 @@ def build_filenode_search_query(search_paths, properties, return_fields=None):
     query_parts = ["MATCH (fnode:FileNode)"]
     
     # WHERE clauses
-    where_clauses = ["NOT fnode:MetaBusinessCard"]
+    where_clauses = [
+        "NOT (fnode)-[:INSITU_COPY_OF]->()",
+        "NOT (fnode)-[:COPY_OF]->()"
+    ]
     params = {}
     
     # Add path filters
