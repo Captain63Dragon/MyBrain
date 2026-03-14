@@ -38,7 +38,7 @@ def parse_gfn(gfn_path):
         yaml_block = f"FILE-NODE-id: \"{node_id}\"\n" + body
         try:
             data = yaml.safe_load(yaml_block)
-            print(f"[parse_gfn] {data.get('FILE-NODE-id')} — keys: {list(data.keys())}")
+            # DEBUG print(f"[parse_gfn] {data.get('FILE-NODE-id')} — keys: {list(data.keys())}")
             if not isinstance(data, dict):
                 data = {"FILE-NODE-id": node_id}
         except Exception:

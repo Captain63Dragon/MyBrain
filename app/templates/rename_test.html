@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rename/Move — MyBrain</title>
+<link rel="stylesheet" href="/app/static/css/base.css">
+</head>
+<body>
+<div class="container">
+  <div class="sidebar">
+    <h2>Services</h2>
+    <div class="nav-item">Search Database</div>
+    <div class="nav-item active">Review FileNode</div>
+  </div>
+
+  <div class="main-panel">
+    <div class="content">
+
+      <div class="bulk-actions">
+        <button class="btn-primary action-btn" id="rename-apply-all">Apply All</button>
+        <button id="rename-reset-all">Reset All</button>
+        <span style="font-size:12px; color:#888; margin-left:4px;">
+          Staged: <span id="dirtyCount" style="color:#c0392b; font-weight:600;">0</span>
+        </span>
+        <div class="root-path">Rename / Move</div>
+      </div>
+
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch swatch-dirty"></span> User edited</span>
+        <span class="legend-item"><span class="legend-swatch swatch-suggested"></span> System suggested</span>
+        <span class="legend-item"><span class="legend-swatch swatch-flagged"></span> Needs attention</span>
+        <span class="legend-item"><span class="legend-swatch swatch-success"></span> Complete</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Node</th>
+            <th>Contact</th>
+            <th>Path</th>
+            <th></th>
+            <th>Filename</th>
+            <th></th>
+            <th class="col-status"></th>
+          </tr>
+        </thead>
+        <tbody id="nodeTable"></tbody>
+      </table>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// Demo data — mix of states to show all UI cases
+const NODES = [
+  { id: 'buscard-test-alpha_20260101',   contact: null,    path: 'C:\\MyBrain-test',         file: '2026_0101-busCard-test-alpha.pdf',   state: 'clean' },
+  { id: 'buscard-test-beta_20260101',    contact: null,    path: 'C:\\MyBrain-test-archive', file: '2026_0101-busCard-test-beta.pdf',    state: 'clean' },
+  { id: 'buscard-test-delta_20260101',   contact: 'Delta', path: 'C:\\MyBrain-test',         file: '2026_0101-busCard-test-delta.pdf',   state: 'clean' },
+  { id: 'buscard-test-epsilon_20260101', contact: null,    path: 'C:\\MyBrain-test',         file: '2026_0101-busCard-test-epsilon.pdf', state: 'clean' },
+  { id: 'buscard-test-gamma_20260101',   contact: null,    path: 'C:\\MyBrain-test-backup',  file: '2026_0101-busCard-test-gamma.pdf',   state: 'clean' },
+  { id: 'buscard-test-zeta_20260101',    contact: null,    path: 'C:\\MyBrain-test-archive', file: '2026_0101-busCard-test-zeta.pdf',    state: 'clean' },
+];
+
+function buildTable() {
+  const tbody = document.getElementById('nodeTable');
+  tbody.innerHTML = '';
+  NODES.forEach((node, i) => {
+    const tr = document.createElement('tr');
+    tr.dataset.index = i;
+    tr.dataset.rowstate = 'clean';
+    tr.innerHTML = `
+    <td class="col-id node" title="${node.id}">${node.id}</td>
+    <td class="col-contact">${node.contact || '<span class="null-val">—</span>'}</td>
+    <td class="col-path">
+      <input class="editable" id="path-${i}" data-field="path" data-orig="${node.path}" value="${node.path}" oninput="onEdit(this,${i})" />
+      <span class="flag-msg" id="flag-${i}"></span>
+    </td>
+    <td class="sep">\\</td>
+    <td class="col-file">
+      <input class="editable" id="file-${i}" data-field="file" data-orig="${node.file}" value="${node.file}" oninput="onEdit(this,${i})" />
+    </td>
+    <td class="col-actions" id="actions-${i}">
+      <button class="reset-btn" title="Reset row" onclick="resetRow(${i})">↺</button>
+    </td>
+    <td class="col-status"><span class="status-dot hidden" id="dot-${i}"></span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function onEdit(input, i) {
+  const tr = document.querySelector(`tr[data-index="${i}"]`);
+  const pathInp = document.getElementById(`path-${i}`);
+  const fileInp = document.getElementById(`file-${i}`);
+
+  pathInp.classList.toggle('dirty', pathInp.value !== pathInp.dataset.orig);
+  fileInp.classList.toggle('dirty', fileInp.value !== fileInp.dataset.orig);
+
+  const isDirty = pathInp.value !== pathInp.dataset.orig || fileInp.value !== fileInp.dataset.orig;
+  setRowState(i, isDirty ? 'dirty' : 'clean');
+  updateDirtyCount();
+}
+
+function setRowState(i, state) {
+  const tr = document.querySelector(`tr[data-index="${i}"]`);
+  const dot = document.getElementById(`dot-${i}`);
+  tr.className = '';
+  dot.className = 'status-dot';
+
+  tr.dataset.rowstate = state;
+
+  if (state === 'dirty')     { tr.classList.add('dirty');     dot.classList.add('dirty'); }
+  if (state === 'suggested') { tr.classList.add('suggested'); dot.classList.add('suggested'); }
+  if (state === 'flagged')   { tr.classList.add('flagged');   dot.classList.add('flagged'); }
+  if (state === 'dispatched'){ tr.classList.add('dispatched'); }
+  if (state === 'success')   { tr.classList.add('success'); }
+  if (state === 'error')     { tr.classList.add('error');     dot.classList.add('flagged'); }
+  if (state === 'clean')     { dot.classList.add('hidden'); }
+}
+
+function setFlag(i, msg, state) {
+  document.getElementById(`flag-${i}`).textContent = msg;
+  setRowState(i, state);
+}
+
+function setActions(i, type) {
+  const cell = document.getElementById(`actions-${i}`);
+  if (type === 'reset') {
+    cell.innerHTML = `<button class="reset-btn" title="Reset row" onclick="resetRow(${i})">↺</button>`;
+  } else if (type === 'accept') {
+    cell.innerHTML = `
+      <button class="accept-btn" onclick="acceptSuggestion(${i})">Accept</button>
+      <button class="cancel-btn" title="Cancel" onclick="resetRow(${i})">✕</button>`;
+  } else if (type === 'spinner') {
+    cell.innerHTML = `<span class="spinner"></span>`;
+  } else if (type === 'done') {
+    cell.innerHTML = `<span style="color:#43a047; font-size:16px;">✓</span>`;
+  } else if (type === 'error') {
+    cell.innerHTML = `<span style="color:#e53935; font-size:16px;" title="${type}">✕</span>`;
+  }
+}
+
+function resetRow(i) {
+  const pathInp = document.getElementById(`path-${i}`);
+  const fileInp = document.getElementById(`file-${i}`);
+  pathInp.value = pathInp.dataset.orig;
+  fileInp.value = fileInp.dataset.orig;
+  pathInp.classList.remove('dirty','suggested');
+  fileInp.classList.remove('dirty','suggested');
+  document.getElementById(`flag-${i}`).textContent = '';
+  setRowState(i, 'clean');
+  setActions(i, 'reset');
+  updateDirtyCount();
+}
+
+function resetAll() { NODES.forEach((_, i) => resetRow(i)); }
+
+function updateDirtyCount() {
+  const count = document.querySelectorAll('tr.dirty, tr.suggested').length;
+  document.getElementById('dirtyCount').textContent = count;
+}
+
+// Demo: simulate validation pass — injects one suggested, one flagged
+function validateAndDispatch() {
+  const dirtyRows = [];
+  document.querySelectorAll('tr.dirty').forEach(tr => {
+    dirtyRows.push(parseInt(tr.dataset.index));
+  });
+
+  if (!dirtyRows.length) { alert('Nothing staged.'); return; }
+
+  // Simulate validation — first dirty row gets a suggestion, rest dispatch
+  let first = true;
+  dirtyRows.forEach(i => {
+    if (first) {
+      // Simulate: file exists at target — inject suggested filename
+      const fileInp = document.getElementById(`file-${i}`);
+      const orig = fileInp.value.replace('.pdf','');
+      const suggested = orig + '_01.pdf';
+      fileInp.value = suggested;
+      fileInp.classList.remove('dirty');
+      fileInp.classList.add('suggested');
+      setFlag(i, 'File exists at target — suggested rename shown', 'suggested');
+      setActions(i, 'accept');
+      first = false;
+    } else {
+      // Clean rows dispatch immediately with spinner
+      setRowState(i, 'dispatched');
+      setActions(i, 'spinner');
+      // Simulate SSE response after delay
+      setTimeout(() => simulateResult(i, Math.random() > 0.2), 1500 + Math.random()*1000);
+    }
+  });
+  updateDirtyCount();
+}
+
+function acceptSuggestion(i) {
+  setRowState(i, 'dispatched');
+  setActions(i, 'spinner');
+  setTimeout(() => simulateResult(i, true), 1500);
+  updateDirtyCount();
+}
+
+function simulateResult(i, success) {
+  if (success) {
+    setRowState(i, 'success');
+    setActions(i, 'done');
+    // Fade out after a moment
+    setTimeout(() => {
+      const tr = document.querySelector(`tr[data-index="${i}"]`);
+      tr.style.transition = 'opacity 0.8s';
+      tr.style.opacity = '0';
+      setTimeout(() => tr.style.display = 'none', 800);
+    }, 1200);
+  } else {
+    setRowState(i, 'error');
+    const errMsg = 'OS error: access denied';
+    document.getElementById(`flag-${i}`).textContent = errMsg;
+    document.getElementById(`actions-${i}`).innerHTML =
+      `<span style="color:#e53935; font-size:16px;" title="${errMsg}">✕</span>`;
+  }
+  updateDirtyCount();
+}
+
+buildTable();
+</script>
+</body>
+</html>

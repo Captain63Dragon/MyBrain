@@ -113,6 +113,23 @@ export function initContentTabs() {
     document.getElementById('bulk-action-select').addEventListener('change', () => {
         updateBulkActions();
     });
+
+    document.getElementById('renameTable').addEventListener('click', (e) => {
+        const tr = e.target.closest('tr');
+        if (!tr) return;
+        const i = parseInt(tr.dataset.index);
+        if (e.target.classList.contains('reset-btn')) resetRenameRow(i);
+        if (e.target.classList.contains('accept-btn')) acceptRenameSuggestion(i);
+        if (e.target.classList.contains('cancel-btn')) resetRenameRow(i);
+    });
+
+    document.getElementById('renameTable').addEventListener('input', (e) => {
+        if (e.target.classList.contains('editable')) {
+            const i = parseInt(e.target.closest('tr').dataset.index);
+            onRenameEdit(e.target, i);
+        }
+    });
+
     document.querySelector('[data-tab="query"]').click()
 };
 
@@ -229,10 +246,29 @@ document.getElementById('execute-action').addEventListener('click', async () => 
             }
             break;
         }
-        case 'move':
-            alert(`Would open file move dialog for ${selected.length} records`);
-            break;
+        case 'move': {
+            const renameNodes = selected.map(id => {
+                const form = getFormByNodeId(id);
+                const fields = getFormFields(form);
+                const filepath = fields.filepath || '';
+                const lastSlash = filepath.lastIndexOf('\\');
+                return {
+                    id: id,
+                    contact: fields.contact_name || null,
+                    path: lastSlash >= 0 ? filepath.substring(0, lastSlash) : '',
+                    file: lastSlash >= 0 ? filepath.substring(lastSlash + 1) : filepath
+                };
+            });
 
+            buildRenameTable(renameNodes);
+            document.querySelector('[data-tab="rename"]').classList.remove('hidden');
+            // switch to rename tab
+            document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+            document.querySelector('#rename-pane').style.display = 'block';
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-tab="rename"]').classList.add('active');
+            break;
+        }
         case 'export':
             alert(`Would export ${selected.length} records to CSV`);
             break;
@@ -244,6 +280,9 @@ document.getElementById('execute-action').addEventListener('click', async () => 
     updateBulkActions();
 
 });
+
+document.getElementById('rename-apply-all').addEventListener('click', validateAndDispatch);
+document.getElementById('rename-reset-all').addEventListener('click', resetAllRename);
 
 // #### Table and Row updates ####
 function createRow(fnode, rootpath) {
@@ -357,13 +396,13 @@ function getFormByNodeId(nodeId) {
 
 function getFormFields(form) {
     const cnt = form.dataset.cnt
-    console.log('fieldMapping:', fieldMapping);
-    console.log('cnt:', cnt);
-    Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
-        if (formKey === 'node') return;
-        const el = form.querySelector(`[name="${formKey}${cnt}"]`);
-        console.log(`${formKey}${cnt} ->`, el ? el.type : 'NOT FOUND', el ? el.value : '');
-    });
+    // console.log('fieldMapping:', fieldMapping);
+    // console.log('cnt:', cnt);
+    // Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
+    //     if (formKey === 'node') return;
+    //     const el = form.querySelector(`[name="${formKey}${cnt}"]`);
+    //     console.log(`${formKey}${cnt} ->`, el ? el.type : 'NOT FOUND', el ? el.value : '');
+    // });
     const fields = {};
     Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
         if (formKey === 'node') return;
@@ -764,6 +803,242 @@ function updateReviewForm(data, rootpath) {
     tab2.classList.remove('hidden');
     tab2.click();
     document.getElementById('results').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+}
+
+// #### Rename and or Move table helper functions. 
+function onRenameEdit(input, i) {
+    const pathInp = document.getElementById(`rpath-${i}`);
+    const fileInp = document.getElementById(`rfile-${i}`);
+    pathInp.classList.toggle('dirty', pathInp.value !== pathInp.dataset.orig);
+    fileInp.classList.toggle('dirty', fileInp.value !== fileInp.dataset.orig);
+    const isDirty = pathInp.value !== pathInp.dataset.orig || fileInp.value !== fileInp.dataset.orig;
+    setRenameRowState(i, isDirty ? 'dirty' : 'clean');
+    updateRenameDirtyCount();
+}
+
+function setRenameRowState(i, state) {
+    const tr = document.querySelector(`#renameTable tr[data-index="${i}"]`);
+    const dot = document.getElementById(`rdot-${i}`);
+    tr.className = '';
+    dot.className = 'status-dot';
+    tr.dataset.rowstate = state;
+    if (state === 'dirty')      { tr.classList.add('dirty');      dot.classList.add('dirty'); }
+    if (state === 'suggested')  { tr.classList.add('suggested');  dot.classList.add('suggested'); }
+    if (state === 'flagged')    { tr.classList.add('flagged');    dot.classList.add('flagged'); }
+    if (state === 'dispatched') { tr.classList.add('dispatched'); }
+    if (state === 'success')    { tr.classList.add('success'); }
+    if (state === 'error')      { tr.classList.add('error');      dot.classList.add('flagged'); }
+    if (state === 'clean')      { dot.classList.add('hidden'); }
+}
+
+function setRenameFlag(i, msg, state) {
+    document.getElementById(`rflag-${i}`).textContent = msg;
+    setRenameRowState(i, state);
+}
+
+function setRenameActions(i, type, errMsg = '') {
+    const cell = document.getElementById(`ractions-${i}`);
+    if (type === 'reset') {
+        cell.innerHTML = `<button class="reset-btn" title="Reset row">↺</button>`;
+    } else if (type === 'accept') {
+        cell.innerHTML = `
+            <button class="accept-btn">Accept</button>
+            <button class="cancel-btn" title="Cancel">✕</button>`;
+    } else if (type === 'spinner') {
+        cell.innerHTML = `<span class="spinner"></span>`;
+    } else if (type === 'done') {
+        cell.innerHTML = `<span style="color:#43a047; font-size:16px;">✓</span>`;
+    } else if (type === 'error') {
+        cell.innerHTML = `<span style="color:#e53935; font-size:16px;" title="${errMsg}">✕</span>`;
+    }
+}
+
+function resetRenameRow(i) {
+    const pathInp = document.getElementById(`rpath-${i}`);
+    const fileInp = document.getElementById(`rfile-${i}`);
+    pathInp.value = pathInp.dataset.orig;
+    fileInp.value = fileInp.dataset.orig;
+    pathInp.classList.remove('dirty', 'suggested');
+    fileInp.classList.remove('dirty', 'suggested');
+    document.getElementById(`rflag-${i}`).textContent = '';
+    setRenameRowState(i, 'clean');
+    setRenameActions(i, 'reset');
+    updateRenameDirtyCount();
+}
+
+function resetAllRename() {
+    const rows = document.querySelectorAll('#renameTable tr[data-index]');
+    rows.forEach(tr => resetRenameRow(parseInt(tr.dataset.index)));
+}
+
+function updateRenameDirtyCount() {
+    const count = document.querySelectorAll('#renameTable tr.dirty, #renameTable tr.suggested').length;
+    document.getElementById('dirtyCount').textContent = count;
+    
+    // check if all rows are done
+    const allRows = document.querySelectorAll('#renameTable tr[data-index]');
+    const doneRows = document.querySelectorAll('#renameTable tr[style*="display: none"]');
+    
+    if (allRows.length > 0 && allRows.length === doneRows.length) {
+        // all done — hide tab, switch to list
+        document.querySelector('[data-tab="rename"]').classList.add('hidden');
+        document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+        document.getElementById('list-pane').style.display = 'block';
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('[data-tab="list"]').classList.add('active');
+    }
+}
+
+function acceptRenameSuggestion(i) {
+    setRenameRowState(i, 'dispatched');
+    setRenameActions(i, 'spinner');
+    dispatchRenameRow(i);
+    updateRenameDirtyCount();
+}
+
+async function validateAndDispatch() {
+    const dirtyRows = [];
+    document.querySelectorAll('#renameTable tr.dirty').forEach(tr => {
+        dirtyRows.push(parseInt(tr.dataset.index));
+    });
+
+    if (!dirtyRows.length) { alert('Nothing staged.'); return; }
+
+    for (const i of dirtyRows) {
+        const node = window._renameNodes[i];
+        const pathInp = document.getElementById(`rpath-${i}`);
+        const fileInp = document.getElementById(`rfile-${i}`);
+        const intent = (node.file !== fileInp.value) ? 'rename' : 'move';
+
+        const targetPath = pathInp.value;
+        const targetFile = fileInp.value;
+        const source = node.path + '\\' + node.file;
+        const target = targetPath + '\\' + targetFile;
+        // no change — skip
+        if (source === target) {
+            resetRenameRow(i);
+            continue;
+        }
+
+        // dispatch immediately
+        setRenameRowState(i, 'dispatched');
+        setRenameActions(i, 'spinner');
+        await dispatchRenameRow(i, intent);
+    }
+    updateRenameDirtyCount();
+}
+
+function buildRenameTable(nodes) {
+    const tbody = document.getElementById('renameTable');
+    tbody.innerHTML = '';
+    
+    nodes.forEach((node, i) => {
+        const tr = document.createElement('tr');
+        tr.dataset.index = i;
+        tr.dataset.nodeId = node.id;
+        tr.dataset.rowstate = 'clean';
+        tr.innerHTML = `
+            <td class="col-status"><span class="status-dot hidden" id="rdot-${i}"></span></td>
+            <td class="col-id node" title="${node.id}">${node.id}</td>
+            <td class="col-contact">${node.contact || '<span class="null-val">—</span>'}</td>
+            <td class="col-path">
+                <input class="editable" id="rpath-${i}" data-field="path" data-orig="${node.path}" value="${node.path}" />
+                <span class="flag-msg" id="rflag-${i}"></span>
+            </td>
+            <td class="sep">\\</td>
+            <td class="col-file">
+                <input class="editable" id="rfile-${i}" data-field="file" data-orig="${node.file}" value="${node.file}" />
+            </td>
+            <td class="col-actions" id="ractions-${i}">
+                <button class="reset-btn" title="Reset row">↺</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // store for later reference
+    window._renameNodes = nodes;
+}
+
+function watchRenameResult(i, mfi_id) {
+    const es = new EventSource(`/sse/watch?mfi_ids=${mfi_id}`);
+
+    es.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        // DEBUG console.log('[watchRenameResult] onmessage received:', data);
+        
+        if (data.status === 'done') { es.close(); return; }
+        if (data.status === 'timeout') { 
+            es.close();
+            setRenameRowState(i, 'flagged');
+            document.getElementById(`rflag-${i}`).textContent = 'No response — check manually';
+            return; 
+        }
+        
+        es.close();
+
+        if (data.status === 'completed') {
+            setRenameRowState(i, 'success');
+            setRenameActions(i, 'done');
+            setTimeout(() => {
+                const tr = document.querySelector(`#renameTable tr[data-index="${i}"]`);
+                tr.style.transition = 'opacity 0.8s';
+                tr.style.opacity = '0';
+                setTimeout(() => {
+                    tr.style.display = 'none';
+                    updateRenameDirtyCount();
+                }, 800);
+            }, 1200);
+        } else {
+            // failed path — data.error should have the message
+            const errMsg = data.error || 'Unknown error';
+            setRenameRowState(i, 'error');
+            setRenameActions(i, 'error', errMsg);
+            document.getElementById(`rflag-${i}`).textContent = errMsg;
+        }
+    };
+
+    es.onerror = () => {
+        es.close();
+        setRenameRowState(i, 'error');
+        setRenameActions(i, 'error', 'SSE connection failed');
+        document.getElementById(`rflag-${i}`).textContent = 'SSE connection failed';
+    };
+}
+
+async function dispatchRenameRow(i, move_intent) {
+    const node = window._renameNodes[i];
+    const pathInp = document.getElementById(`rpath-${i}`);
+    const fileInp = document.getElementById(`rfile-${i}`);
+
+    const source = node.path + '\\' + node.file;
+    const target = pathInp.value + '\\' + fileInp.value;
+
+    try {
+        const response = await fetch('/buscard/dispatch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action:  'move',
+                source:  source,
+                target:  target,
+                node_id: node.id,
+                intent: move_intent,
+                mfn_id:  mfn['MFN-id'],
+            })
+        });
+        const result = await response.json();
+        // DEBUG console.log('rename dispatch queued', result);
+        // DEBUG console.log('watching for mfi_id:', result.mfi_id);
+
+        // watch mfi_id via SSE for result
+        watchRenameResult(i, result.mfi_id);
+
+    } catch (err) {
+        setRenameRowState(i, 'error');
+        setRenameActions(i, 'error', err.message);
+        document.getElementById(`rflag-${i}`).textContent = err.message;
+    }
 }
 
 // #### Utilities ####

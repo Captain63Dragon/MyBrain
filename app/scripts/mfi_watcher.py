@@ -25,7 +25,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from app.shared.mfi_shared import (
     decode,
-    encode,
     write_mfi,
     move_to_processing,
     move_to_completed,
@@ -197,7 +196,7 @@ ACTION_HANDLERS = {
 
 def process_mfi(filepath: Path):
     """Claim, execute, and complete a single MFI file."""
-    print(f"Claiming: {filepath.name}")
+    # DEBUG print(f"Claiming: {filepath.name}")
     processing_file = move_to_processing(filepath)
 
     try:
@@ -211,10 +210,10 @@ def process_mfi(filepath: Path):
         write_mfi(result, folder=processing_file.parent.parent / 'completed')
 
         move_to_completed(processing_file)
-        if hasattr(result, 'files'):
-            print(f"Completed: {filepath.name} → {len(result.files)} files matched")
-        else:
-            print(f"Completed: {filepath.name} → {result.action} success={result.success}")
+        # if hasattr(result, 'files'):
+        #     print(f"Completed: {filepath.name} → {len(result.files)} files matched")
+        # else:
+        #     print(f"Completed: {filepath.name} → {result.action} success={result.success}")
             
     except Exception as e:
         mark_failed(processing_file)

@@ -22,18 +22,18 @@ class Neo4jClient:
         self.current_schema = None
 
     def init_app(self, app):
-        # print(f"INIT_APP: Called on instance {id(self)}")
-        # print(f"INIT_APP: Current driver value: {self.driver}")
+        # DEBUG print(f"INIT_APP: Called on instance {id(self)}")
+        # DEBUG print(f"INIT_APP: Current driver value: {self.driver}")
         if self.driver:
-            # print(f"INIT_APP: Driver already exists, returning early")
+            # DEBUG print(f"INIT_APP: Driver already exists, returning early")
             return
         
         self.driver = db4j.driver(
             app.config['NEO4J_URI'],
             auth=(app.config['NEO4J_USER'], app.config['NEO4J_PASSWORD'])
         )
-        # print(f"INIT_APP: Driver created: {self.driver}")
-        # print(f"INIT_APP: Instance after init: {id(self)}, driver: {self.driver}")
+        # DEBUG print(f"INIT_APP: Driver created: {self.driver}")
+        # DEBUG print(f"INIT_APP: Instance after init: {id(self)}, driver: {self.driver}")
 
         # @app.teardown_appcontext
         # def _close(exc):
@@ -53,8 +53,8 @@ class Neo4jClient:
         return inst.driver
 
     def get_session(self):
-        # print(f"GET_SESSION: Called on instance {id(self)}")
-        # print(f"GET_SESSION: Driver value: {self.driver}")
+        # DEBUG print(f"GET_SESSION: Called on instance {id(self)}")
+        # DEBUG print(f"GET_SESSION: Driver value: {self.driver}")
         return self.driver.session()
     
     def close(self):
@@ -73,4 +73,4 @@ class Neo4jClient:
 
 # Public client instance used by routes: `from app.models import neo4j`
 neo4j = Neo4jClient()
-# print(f"MODULE LOAD: Created neo4j instance: {id(neo4j)}")
+# DEBUG print(f"MODULE LOAD: Created neo4j instance: {id(neo4j)}")

@@ -42,12 +42,12 @@ body { font-family: system-ui, sans-serif; height: 100vh; overflow: hidden; }
 }
 
 button {
-    padding: 8px 16px;
+    font-size: 13px;
+    padding: 5px 14px;
     border: 1px solid #ddd;
     border-radius: 4px;
     background: white;
     cursor: pointer;
-    font-size: 14px;
     transition: all 0.2s;
 }
 
@@ -98,10 +98,6 @@ th {
     font-weight: bold;
 }
 
-/* tr {
-    background-color: white;
-} */
-
 tr:hover {
     background-color: #f5f5f5;
     cursor: pointer;
@@ -139,6 +135,132 @@ tr.row-saved {
     background-color: #cfe2ff;
     transition: background-color 2s ease;
 }
+  /* Rename/Move Row states */
+  tbody tr.dirty            { background: #fff3cd; border-left: 3px solid #e67e22; }
+  tbody tr.dirty:hover      { background: #ffe69c; }
+  tbody tr.suggested        { background: #e8f0fe; border-left: 3px solid #2e6da4; }
+  tbody tr.suggested:hover  { background: #d6e4fd; }
+  tbody tr.flagged          { background: #ffebee; border-left: 3px solid #e53935; }
+  tbody tr.flagged:hover    { background: #ffd7d7; }
+  tbody tr.error            { background: #ffebee; border-left: 3px solid #e53935; }
+  tbody tr.dispatched       { opacity: 0.5; }
+  tbody tr.success          { background: #e8f5e9; border-left: 3px solid #43a047; transition: all 0.6s; }
+
+  /* Flag message visibility */
+  tbody tr.flagged .flag-msg,
+  tbody tr.suggested .flag-msg,
+  tbody tr.error .flag-msg  { display: block; }
+  tbody tr.flagged .flag-msg,
+  tbody tr.error .flag-msg  { color: #c0392b; }
+  tbody tr.suggested .flag-msg { color: #2e6da4; }
+  
+  /* Input states */
+  input.editable {
+    font-family: inherit;
+    font-size: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #222;
+    width: 100%;
+    padding: 2px 5px;
+    outline: none;
+    border-radius: 2px;
+    transition: all 0.1s;
+  }
+  input.editable:hover  { border-color: #ccc; background: #fafafa; }
+  input.editable:focus  { border-color: #2e6da4; background: #fff; box-shadow: 0 0 0 2px rgba(46,109,164,0.15); }
+  input.editable.dirty  { color: #c0392b; border-color: #e67e22; background: #fffbf0; }
+  input.editable.suggested { color: #2e6da4; border-color: #2e6da4; background: #e8f0fe; font-style: italic; }
+
+  /* Columns */
+  .col-id      { color: #2e6da4; font-size: 12px; font-weight: 600; min-width: 200px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+  .col-contact { color: #555; min-width: 120px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .col-path    { width: 34%; }
+  .col-file    { width: 26%; }
+  .sep         { color: #aaa; width: 10px; text-align: center; padding: 0; }
+  .col-actions { width: 100px; text-align: right; white-space: nowrap; padding-right: 8px; }
+  .col-status  { width: 24px; text-align: center; padding: 0 4px; }
+
+  /* Action buttons in row */
+  .reset-btn, .accept-btn, .cancel-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 1px 4px;
+    color: #aaa;
+    transition: color 0.1s;
+    line-height: 1;
+  }
+  .reset-btn:hover  { color: #555; }
+  .accept-btn       { color: #2e6da4; font-size: 12px; font-weight: 600; border: 1px solid #2e6da4; border-radius: 2px; padding: 1px 6px; }
+  .accept-btn:hover { background: #2e6da4; color: #fff; }
+  .cancel-btn:hover { color: #c0392b; }
+
+  /* Status indicator cell */
+  .status-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    vertical-align: middle;
+  }
+  .status-dot.dirty     { background: #e67e22; }
+  .status-dot.suggested { background: #2e6da4; }
+  .status-dot.flagged   { background: #e53935; }
+  .status-dot.hidden    { opacity: 0; }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid #ddd;
+    border-top-color: #2e6da4;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Flag message */
+  .flag-msg {
+    font-size: 11px;
+    color: #c0392b;
+    padding: 2px 6px;
+    display: none;
+  }
+  tr.flagged .flag-msg, tr.suggested .flag-msg { display: block; color: #2e6da4; }
+  tr.flagged .flag-msg { color: #c0392b; }
+
+  /* Error tooltip */
+  .error-hint {
+    display: none;
+    font-size: 11px;
+    color: #e53935;
+    padding: 2px 6px;
+  }
+  tr.error .error-hint { display: block; }
+
+  .null-val { color: #bbb; font-style: italic; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    border-left: 3px solid transparent;
+  }
+  .swatch-dirty     { background: #fff3cd; border-left-color: #e67e22; }
+  .swatch-suggested { background: #e8f0fe; border-left-color: #2e6da4; }
+  .swatch-flagged   { background: #ffebee; border-left-color: #e53935; }
+  .swatch-success   { background: #e8f5e9; border-left-color: #43a047; }
 
 .description {
     max-width: 200px;
@@ -365,13 +487,13 @@ select:disabled {
 
 .action-btn,
 .btn-primary {
-    background-color: #4CAF50;
+    background-color: #2e6da4;
     color: white;
 }
 
 .action-btn,
 .btn-primary:hover {
-    background-color: #45a049;
+    background-color: #245a8a;
 }
 
 .btn-secondary {
@@ -381,7 +503,7 @@ select:disabled {
 }
 
 .btn-secondary:hover {
-    background-color: #777;
+    background-color: #f0f0f0;
 }
 
 .bulk-actions {

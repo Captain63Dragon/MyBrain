@@ -117,9 +117,10 @@ def dispatch_action():
     elif action == 'move':
         source = data.get('source')
         target = data.get('target')
+        intent = data.get('intent', 'move')
         if not all([source, target]):
             return jsonify({'error': 'move requires source and target'}), 400
-        mfi = MoveMFI(source=source, target=target, node_id=node_id, mfn_id=mfn_id, intent='move')
+        mfi = MoveMFI(source=source, target=target, node_id=node_id, mfn_id=mfn_id, intent=intent)
 
     elif action == 'archive':
         source = data.get('source')

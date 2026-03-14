@@ -16,12 +16,12 @@ BACKUP_DIR   = Path('C:/Users/termi/MyBrain-test-backup')
 
 # Files and their starting locations
 TEST_FILES = [
-    (TEST_DIR,   '2026_0101-busCard-test-alpha.pdf'),
-    (TEST_DIR,   '2026_0101-busCard-test-beta.pdf'),
-    (TEST_DIR,   '2026_0101-busCard-test-gamma.pdf'),
-    (TEST_DIR,   '2026_0101-busCard-test-delta.pdf'),
-    (TEST_DIR,   '2026_0101-busCard-test-epsilon.pdf'),
-    (BACKUP_DIR, '2026_0101-busCard-test-zeta.pdf'),
+    (TEST_DIR,   '2026_0101-busCard-test-alpha.pdf'),    # stays in place
+    (TEST_DIR,   '2026_0101-busCard-test-beta.pdf'),     # insitu copy to archive
+    (TEST_DIR,   '2026_0101-busCard-test-gamma.pdf'),    # move to backup 
+    (TEST_DIR,   '2026_0101-busCard-test-delta.pdf'),    # missed.. stays in place for now.
+    (TEST_DIR,   '2026_0101-busCard-test-epsilon.pdf'),  # copy master in source location. One to backup, one to archive
+    (BACKUP_DIR, '2026_0101-busCard-test-zeta.pdf'),     # copy master in target location. Master in archive, stub in backup
 ]
 
 def clean_mfi_queues():

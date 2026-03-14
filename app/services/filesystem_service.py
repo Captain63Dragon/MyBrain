@@ -354,9 +354,9 @@ def load_seed_folders(mfn_path):
     nodes  = parse_gfn(gfn_path)
     label  = mfn.get('name', 'Business Card').replace(' ', '')
     mapped = [map_properties(mfn, n) for n in nodes]
-    print(f"[debug] nodes: {len(nodes)}, mapped: {len(mapped)}")
-    if mapped:
-        print(f"[debug] first mapped: {mapped[0]}")
+    # DEBUG print(f"[debug] nodes: {len(nodes)}, mapped: {len(mapped)}")
+    # if mapped:
+    #     print(f"[debug] first mapped: {mapped[0]}")
     load_gfn_nodes(mfn, label, mapped)
     folders = get_src_folders(mapped)
     return folders, mfn

@@ -1,3 +1,4 @@
+import os
 
 def create_app():
     from flask import Flask
@@ -20,5 +21,6 @@ def create_app():
         app.register_blueprint(sse_bp)
         # app.register_blueprint(timeline_bp)
         
-    start_mfi_broker()
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        start_mfi_broker()        
     return app

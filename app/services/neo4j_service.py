@@ -18,7 +18,6 @@ from app.services.filesystem_service import (
 from app.shared.mfi_shared import (
     decode,
     completed_path,
-    move_to_processing,
     CopyResultMFI,
 )
 
@@ -134,7 +133,7 @@ def create_node( session, label, node):
 def create_nodes_with_relationships(session, label: str, nodes: list):
     for n in nodes:
         related = n.pop('_related', [])
-        print(f"[import] {n.get('FILE-NODE-id')} — related: {len(related)}")        
+        # DEBUG print(f"[import] {n.get('FILE-NODE-id')} — related: {len(related)}")        
         # create master node
         create_nodes(session, label, [n])
         
@@ -224,7 +223,7 @@ def search_for_file_node(search_paths=None, properties=None):
     debug_query = query
     for key, value in params.items():
         debug_query = debug_query.replace(f'${key}', f"'{value}'")
-    # print(f"Debug query with substitutions:\n{debug_query}")
+    # DEBUG print(f"Debug query with substitutions:\n{debug_query}")
     # Execute and return results
     with neo4j.get_session() as session:
         result = session.run(query, parameters=params)
@@ -485,12 +484,12 @@ def process_discovery_results() -> dict:
     )
 
     completed = completed_path()
-    print(f"Looking in: {completed}")
+    # DEBUG print(f"Looking in: {completed}")
     if not completed.exists():
         return {'status': 'ok', 'processed': 0, 'message': 'completed/ empty'}
 
     mfi_files = list(completed.glob('*.mfi'))
-    print(f"Files found: {mfi_files}")
+    # DEBUG print(f"Files found: {mfi_files}")
     if not mfi_files:
         return {'status': 'ok', 'processed': 0, 'message': 'nothing to process'}
 
@@ -502,8 +501,8 @@ def process_discovery_results() -> dict:
             try:
                 dispatch_summary = {'nodes_created': 0,'collisions': [],'errors': [],'insitu': []}
                 mfi = decode(str(mfi_path))
-                print(f"Decoded: {type(mfi).__name__} - {mfi.action}")
-                print(f"isinstance check: {isinstance(mfi, DiscoveryResultMFI)}")
+                # DEBUG print(f"Decoded: {type(mfi).__name__} - {mfi.action}")
+                # DEBUG print(f"isinstance check: {isinstance(mfi, DiscoveryResultMFI)}")
 
                 if not isinstance(mfi, DiscoveryResultMFI):
                     continue                    # not ours — leave it
@@ -512,11 +511,11 @@ def process_discovery_results() -> dict:
                 for file_entry in mfi.files:
                     try:
                         node_id = derive_file_node_id(file_entry['filepath'], file_entry.get('mtime', ''))
-                        print(f"[discovery] filepath: {file_entry['filepath']}")
-                        print(f"[discovery] generated node_id: {node_id}")
+                        # DEBUG print(f"[discovery] filepath: {file_entry['filepath']}")
+                        # DEBUG print(f"[discovery] generated node_id: {node_id}")
 
                         already_exists = not checker(node_id)
-                        print(f"[discovery] exists={already_exists}")
+                        # DEBUG print(f"[discovery] exists={already_exists}")
 
                         fields = {
                             'filepath':        file_entry['filepath'],
@@ -527,8 +526,8 @@ def process_discovery_results() -> dict:
                             'date':            file_entry.get('date') or file_entry.get('mtime', ''),
                         }
 
-                        print(f"[discovery] fields: {fields}")
-                        print(f"[discovery] source_mfi_id: {mfi.source_mfi_id}")
+                        # DEBUG print(f"[discovery] fields: {fields}")
+                        # DEBUG print(f"[discovery] source_mfi_id: {mfi.source_mfi_id}")
 
                         result = session.run("""
                             MATCH (n:FileNode {filepath: $filepath})-[:INSITU_COPY_OF]->()
@@ -536,7 +535,7 @@ def process_discovery_results() -> dict:
                         """, filepath=file_entry['filepath'])
 
                         if result.single():
-                            print(f"[discovery] INSITU — skipping: {node_id}")
+                            # DEBUG print(f"[discovery] INSITU — skipping: {node_id}")
                             dispatch_summary.setdefault('insitu', []).append(node_id)
                             continue
 
@@ -554,10 +553,10 @@ def process_discovery_results() -> dict:
 
                         if already_exists:
                             dispatch_summary.setdefault('collisions', []).append(node_id)
-                            print(f"[discovery] COLLISION: {node_id}")
+                            # DEBUG print(f"[discovery] COLLISION: {node_id}")
                         else:
                             dispatch_summary['nodes_created'] += 1
-                            print(f"[discovery] CREATED: {node_id}")
+                            # DEBUG print(f"[discovery] CREATED: {node_id}")
 
                     except Exception as e:
                         print(f"[discovery] ERROR: {file_entry.get('filepath')} — {e}")
@@ -597,7 +596,7 @@ def process_discovery_results() -> dict:
                     status          = status,
                     created         = datetime.now().isoformat()
                 )
-                push_result(mfi.mfi_id, {
+                push_result(mfi.source_mfi_id, {
                     'status':        status,
                     'nodes_created': dispatch_summary.get('nodes_created', 0),
                     'collisions':    len(dispatch_summary.get('collisions', [])),
@@ -624,10 +623,6 @@ def process_copy_results() -> dict:
         master_source — source is master, create secondary at target, COPY_OF
         master_target — target is master, update master filepath, create secondary at source, COPY_OF
     """
-    from app.shared.mfi_shared import (
-        decode, move_to_processing, completed_path, CopyResultMFI
-    )
-
     completed = completed_path()
     if not completed.exists():
         return {'status': 'ok', 'processed': 0, 'message': 'completed/ empty'}
@@ -648,9 +643,9 @@ def process_copy_results() -> dict:
                 mfi_path.unlink()
                 if not mfi.success:
                     err = mfi.error
-                    print(f"[copy] OS failed: {err}")
+                    # DEBUG print(f"[copy] OS failed: {err}")
                     write_os_result(session, mfi, status='failed', errors=[err])
-                    push_result(mfi.mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
+                    push_result(mfi.source_mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
                     summary['errors'].append({'mfi': mfi_path.name, 'error': err})
                     summary['processed'] += 1
                     continue
@@ -662,9 +657,9 @@ def process_copy_results() -> dict:
 
                 if matched == 0:
                     err = f"Node not found in graph: {mfi.node_id}"
-                    print(f"[copy] {err}")
+                    # DEBUG print(f"[copy] {err}")
                     write_os_result(session, mfi, status='failed', errors=[err])
-                    push_result(mfi.mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
+                    push_result(mfi.source_mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
                     summary['errors'].append({'mfi': mfi_path.name, 'error': err})
                     summary['processed'] += 1
                     continue
@@ -744,7 +739,7 @@ def process_copy_results() -> dict:
 
                 write_os_result(session, mfi, status='completed', errors=[],
                                 created_node_id=created_node_id)
-                push_result(mfi.mfi_id, {
+                push_result(mfi.source_mfi_id, {
                     'status': 'completed', 
                     'intent': mfi.intent, 
                     'node_id': mfi.node_id, 
@@ -787,13 +782,14 @@ def process_move_results() -> dict:
                 if not isinstance(mfi, MoveResultMFI):
                     continue
                 mfi_path.unlink() 
+                # DEBUG print(f"[move] unlinked: {mfi_path.name}")
                 if not mfi.success:
-                    print(f"[move] Skipping failed move: {mfi.error}")
-                    summary['errors'].append({'mfi': mfi_path.name, 'error': mfi.error})
-                    move_to_processing(mfi_path)
+                    err = mfi.error
+                    # DEBUG print(f"[move] Skipping failed move: {mfi.error}")
+                    summary['errors'].append({'mfi': mfi_path.name, 'error': err})
+                    push_result(mfi.source_mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
                     summary['processed'] += 1
                     continue
-
                 if mfi.intent == 'move':
                     result = session.run("""
                         MATCH (n:FileNode {`FILE-NODE-id`: $node_id})
@@ -801,6 +797,22 @@ def process_move_results() -> dict:
                         RETURN count(n) AS matched
                     """, node_id=mfi.node_id, target=mfi.target)
 
+                elif mfi.intent == 'rename':
+                    from app.services.neo4j_service import derive_file_node_id
+                    checker = make_checker(session)
+                    
+                    new_node_id = derive_file_node_id(mfi.target, '')
+                    
+                    if not checker(new_node_id):
+                        # collision — increment
+                        new_node_id = suggest_secondary_id(new_node_id, checker)
+                    
+                    result = session.run("""
+                        MATCH (n:FileNode {`FILE-NODE-id`: $node_id})
+                        SET n.filepath = $target,
+                            n.`FILE-NODE-id` = $new_node_id
+                        RETURN count(n) AS matched
+                    """, node_id=mfi.node_id, target=mfi.target, new_node_id=new_node_id)                
                 elif mfi.intent == 'archive':
                     result = session.run("""
                         MATCH (n:FileNode {`FILE-NODE-id`: $node_id})
@@ -808,7 +820,6 @@ def process_move_results() -> dict:
                             n.archived  = true
                         RETURN count(n) AS matched
                     """, node_id=mfi.node_id, target=mfi.target)
-
                 else:
                     print(f"[move] Unknown intent: {mfi.intent} — skipping")
                     summary['errors'].append({'mfi': mfi_path.name, 'error': f"Unknown intent: {mfi.intent}"})
@@ -818,20 +829,22 @@ def process_move_results() -> dict:
                 matched = result.single()['matched']
                 if matched == 0:
                     err = f"Node not found in graph: {mfi.node_id}"
-                    print(f"[move] {err}")
+                    # DEBUG print(f"[move] {err}")
                     write_os_result(session, mfi, status='failed', errors=[err])
-                    push_result(mfi.mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
+                    push_result(mfi.source_mfi_id, {'status': 'failed', 'intent': mfi.intent, 'error': err})
+                    
                     summary['errors'].append({'mfi': mfi_path.name, 'error': err})
                     summary['processed'] += 1
                     continue
 
-                print(f"[move] {mfi.intent}: {mfi.node_id} → {mfi.target}")
+                # DEBUG print(f"[move] {mfi.intent}: {mfi.node_id} → {mfi.target}")
                 write_os_result(session, mfi, status='completed', errors=[])
-                push_result(mfi.mfi_id, {'status': 'completed', 'intent': mfi.intent, 'node_id': mfi.node_id})
+                push_result(mfi.source_mfi_id, {'status': 'completed', 'intent': mfi.intent, 'node_id': mfi.node_id})
                 summary['processed'] += 1
 
             except Exception as e:
                 print(f"[move] ERROR: {mfi_path.name} — {e}")
+                # TODO: push_result here so error is flagged in SSE channel.
                 summary['errors'].append({'file': mfi_path.name, 'error': str(e)})
                 
     summary['status'] = 'ok'
