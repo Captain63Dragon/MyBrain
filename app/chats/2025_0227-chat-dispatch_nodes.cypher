@@ -1,5 +1,0 @@
-(MFN)-[:ORCHISTRATES]->(Dispatch)-[:CREATED]->(FileNode)
-(Dispatch)-[:PENDING_RENAME]->(FileNode)
-(FileNode)-[:COPY_OF]->(FileNode)
-(FileNode)-[:INSITU_COPY_OF]->(FileNode)
-(DISPATCH)-[:CONFIRMED_BY]->(OSDispatchResult)
