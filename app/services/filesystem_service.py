@@ -346,13 +346,19 @@ def load_seed_folders(mfn_path):
     from app.services.neo4j_service import load_gfn_nodes
     import glob
     mfn_dir  = os.path.dirname(mfn_path)
-    gfn_path = glob.glob(os.path.join(mfn_dir, 'GFN-*.yaml'))
+    mfn_basename = os.path.basename(mfn_path)         
+    type_key = mfn_basename[4:-5]    
+    gfn_pattern = os.path.join(mfn_dir, f'GFN-{type_key}-*.yaml')
+    gfn_path = glob.glob(gfn_pattern)
     if not gfn_path:
         raise FileNotFoundError(f"No GFN YAML found in {mfn_dir}")
     gfn_path = gfn_path[0]
     mfn    = load_mfn(mfn_path)
     nodes  = parse_gfn(gfn_path)
-    label  = mfn.get('name', 'Business Card').replace(' ', '')
+    # label  = mfn.get('name', 'Business Card').replace(' ', '') # fallback removed
+    label = mfn.get('label')
+    if not label:
+        raise ValueError(f"MFN missing required 'label' field: {mfn_path}")
     mapped = [map_properties(mfn, n) for n in nodes]
     # DEBUG print(f"[debug] nodes: {len(nodes)}, mapped: {len(mapped)}")
     # if mapped:

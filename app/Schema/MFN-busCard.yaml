@@ -2,9 +2,22 @@ META-FILE-NODE: BusinessCard_20260121
 
 # Identity
 name: "Business Card"
-path: "E:\\Reference\\BusinessCards"
+label: "BusinessCard"
+path: "E:\\BusinessCards"
 description: "Business card scans via dropbox or other, collected in-person or received"
 purpose: "Searchable contact source information. Professional connections, trades and other service providers"
+
+# UI routing and display configuration
+route_prefix: "buscard"
+display_name_field: "contact_name"
+table_columns:
+  - node
+  - category
+  - contact_name
+  - phone
+  - cell
+  - description
+  - filepath
 
 # System fields — rendered readonly, never in add-field picker
 system_properties:

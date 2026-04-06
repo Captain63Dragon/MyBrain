@@ -1,5 +1,6 @@
 // <script src="{{ url_for('static', filename='js/review_filenode.js') }}"></script>
 import { initContentTabs } from './review_filenode.js';
+let mfnListLoaded = false;
 
 // Moved from inline script in app/templates/base.html
 document.addEventListener('DOMContentLoaded', function() {
@@ -23,6 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (serviceKey === 'review_filenode') {
                 const el = document.getElementById('content-review');
                 if (el) el.style.display = 'block';
+                if (!mfnListLoaded) {
+                    loadMfnList();
+                    mfnListLoaded = true;
+                }
                 // initialize tabs for the included fragment
             } else if (serviceKey === 'search_database') {
                 const el = document.getElementById('content-search');
@@ -34,3 +39,38 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+async function loadMfnList() {
+    const select = document.getElementById('mfnSelect');
+    if (!select) return;
+
+    try {
+        const response = await fetch('/mfn/list');
+        const mfns = await response.json();
+
+        select.innerHTML = '';
+        mfns.forEach(mfn => {
+            const option = document.createElement('option');
+            option.value = mfn.id;
+            option.textContent = mfn.name;
+            select.appendChild(option);
+        });
+
+        // Restore last selection from localStorage
+        const lastMfnId = localStorage.getItem('lastMfnId');
+        if (lastMfnId) {
+            select.value = lastMfnId;
+        }
+
+        // Populate Node Path from localStorage
+        const defaultSearchPath = localStorage.getItem('defaultSearchPath');
+        const nodePathInput = document.getElementById('nodePathInput');
+        if (nodePathInput && defaultSearchPath) {
+            nodePathInput.value = defaultSearchPath;
+        }
+
+    } catch (err) {
+        console.error('Failed to load MFN list:', err);
+        select.innerHTML = '<option value="">Error loading MFNs</option>';
+    }
+}

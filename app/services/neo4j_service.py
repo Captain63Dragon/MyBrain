@@ -21,7 +21,6 @@ from app.shared.mfi_shared import (
     CopyResultMFI,
 )
 
-
 def ensure_filenode_constraint(session):
     """Ensure the FILE-NODE-id uniqueness constraint exists on FileNode label"""
     try:
@@ -35,6 +34,30 @@ def ensure_filenode_constraint(session):
     except Exception as e:
         print(f"Warning: Could not create FileNode constraint: {e}")
         return False
+
+# This is the controlled exception to the sessions-in-service rule.
+# Bot layer calls get_session() to obtain a session context manager.
+# Session lifecycle (open/close) remains in neo4j_service — bots just request one.
+# Routes and services should NOT call get_session() — they use their own
+# with neo4j.get_session() as session: blocks directly.
+def get_session():
+    """
+    Provide a Neo4j session context manager to the bot layer.
+    Controlled exception to the sessions-in-neo4j_service rule.
+    Bot layer only — do not call from routes or other services.
+
+    Usage in bots:
+        _owned = session is None
+        if _owned:
+            session = get_session().__enter__()
+        try:
+            ...
+        finally:
+            if _owned and session:
+                session.__exit__(None, None, None)
+    """
+    return neo4j.get_session()
+
 
 def ensure_mfn_constraint(session):
     """Ensure the MFN-id uniqueness constraint exists on MetaFileNode label"""
@@ -203,7 +226,7 @@ def get_mfn_patterns(mfn_id: str) -> list:
         return [p['pattern_value'] for p in mfn.get('patterns', [])
                 if p.get('pattern_type') == 'filename_contains']
 
-def search_for_file_node(search_paths=None, properties=None):
+def search_for_file_node(search_paths=None, properties=None, mfn_id='BusinessCard_20260121'):  # TODO: remove default
     """Retrieve all paths and filenodes matching search criteria.
     
     Args:
@@ -213,27 +236,26 @@ def search_for_file_node(search_paths=None, properties=None):
     Returns:
         List of matching nodes with their properties
     """
-    if search_paths is None:
-        # search_paths = get_default_search_paths()  # your "usual places"
-        search_paths = ["C:\\Users\\termi\\dropbox\\"]
-    if properties is None:
-        # This generates all nodes in these paths
-        properties = {}
-    query, params = build_filenode_search_query(search_paths, properties)
-    debug_query = query
-    for key, value in params.items():
-        debug_query = debug_query.replace(f'${key}', f"'{value}'")
-    # DEBUG print(f"Debug query with substitutions:\n{debug_query}")
-    # Execute and return results
+    if mfn_id is None:
+        raise ValueError("mfn_id is required")
     with neo4j.get_session() as session:
-        result = session.run(query, parameters=params)
-        records = [record.data() for record in result]    
-
         mfn_result = session.run(
-            "MATCH (m:MetaFileNode {`MFN-id`: 'BusinessCard_20260121'}) RETURN m"
+            "MATCH (m:MetaFileNode {`MFN-id`: $mfn_id}) RETURN m",
+            mfn_id=mfn_id
         ).single()
         mfn = {'meta_file_node': dict(mfn_result['m'])} if mfn_result else {}
 
+        if search_paths is None:
+            search_paths = [mfn_result['m'].get('path', '')] if mfn_result else []
+
+        if properties is None:
+            properties = {}
+        query, params = build_filenode_search_query(search_paths, properties)
+        debug_query = query
+        for key, value in params.items():
+            debug_query = debug_query.replace(f'${key}', f"'{value}'")
+        result = session.run(query, parameters=params)
+        records = [record.data() for record in result]
     return [{'debug_query': debug_query}] + ([mfn] if mfn else []) + records
 
 def scan_directory_to_nodes(scan_path: str, mfn_id: str, min_confidence: float = 0.5) -> dict:
@@ -507,6 +529,12 @@ def process_discovery_results() -> dict:
                 if not isinstance(mfi, DiscoveryResultMFI):
                     continue                    # not ours — leave it
 
+                label_result = session.run("""
+                    MATCH (mfn:MetaFileNode {`MFN-id`: $mfn_id})
+                    RETURN mfn.label AS label
+                """, mfn_id=mfi.mfn_id).single()
+                node_label = label_result['label'] if label_result else 'FileNode'
+                print(f"[process_discovery_results]", label_result)
                 # ── Process each matched file ─────────────────────────────────
                 for file_entry in mfi.files:
                     try:
@@ -539,10 +567,10 @@ def process_discovery_results() -> dict:
                             dispatch_summary.setdefault('insitu', []).append(node_id)
                             continue
 
-                        session.run("""
-                            MATCH (d:Dispatch {`mfi-id`: $source_mfi_id})
-                            MERGE (n:FileNode {`FILE-NODE-id`: $node_id})
-                            ON CREATE SET n += $fields, n:`BusinessCard`
+                        session.run(f"""
+                            MATCH (d:Dispatch {{`mfi-id`: $source_mfi_id}})
+                            MERGE (n:FileNode {{`FILE-NODE-id`: $node_id}})
+                            ON CREATE SET n += $fields, n:`{node_label}`
                             CREATE (d)-[:CREATED]->(n)
                             RETURN n
                         """,
@@ -878,3 +906,20 @@ def get_export_nodes() -> list:
             related = [r for r in record['related'] if r is not None]
             rows.append({'node': node, 'related': related})
     return rows
+
+def get_all_mfns():
+    with neo4j.get_session() as session:
+        result = session.run("""
+            MATCH (m:MetaFileNode)
+            RETURN m.`MFN-id` AS id, m.name AS name
+            ORDER BY m.name
+        """)
+        return [record.data() for record in result]
+
+def ping_neo4j():
+    try:
+        with neo4j.get_session() as session:
+            result = session.run("RETURN datetime() AS time").single()
+            return str(result['time'])
+    except Exception:
+        return None

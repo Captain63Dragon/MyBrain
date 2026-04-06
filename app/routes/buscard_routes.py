@@ -18,20 +18,9 @@ from app.shared.mfi_shared import CopyMFI, MoveMFI
 from pathlib import Path
 import json
 import os
+from app import SERVICES
 
 buscard_bp = Blueprint('buscard', __name__, url_prefix='/buscard')
-
-# Simple service registry - just titles and template names
-SERVICES = {
-    'search_database': {
-        'title': 'Search Database',
-        'template': 'search_database.html'
-    },
-    'review_filenode': {
-        'title': 'Review FileNode',
-        'template': 'review_filenode.html'
-    }
-}
 
 @buscard_bp.route('/show')
 @buscard_bp.route('/show/<label>')
@@ -239,7 +228,10 @@ def load():
     gfn_path = os.path.join('app', 'Schema', 'GFN-busCard-dropbox.yaml')
     mfn = load_mfn(mfn_path)
     nodes = parse_gfn(gfn_path)
-    label = mfn.get('name', 'Business Card').replace(' ', '')
+    # label = mfn.get('name', 'Business Card').replace(' ', '')
+    label = mfn.get('label')
+    if not label:
+        raise ValueError(f"MFN missing required 'label' field: {mfn_path}")
     mapped = [map_properties(mfn, n) for n in nodes]
 
     from app.models import neo4j

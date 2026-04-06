@@ -1,0 +1,75 @@
+META-FILE-NODE: R2HOdo_20260314
+
+# Identity
+name: "Road to Hope Odometer Record"
+label: R2HOdo
+path: "E:\\R2Hope"
+description: "Odometer screen captures from Road to Hope cancer patient drives"
+purpose: "Trip mileage tracking for dispatcher and treasurer reporting. One node per trip."
+
+# UI routing and display configuration
+route_prefix: "r2hodo"
+display_name_field: "patient_name"
+table_columns:
+  - node
+  - patient_name
+  - trip_date
+  - distance_km
+  - appointment_location
+  - filepath
+  
+# System fields — rendered readonly, never in add-field picker
+system_properties:
+  - FILE-NODE-id
+  - filepath
+  - dispatcher_submitted
+  - treasurer_submitted
+
+# Editable properties — render order is form order
+core_properties:
+  patient_name:
+    label: "Patient Name"
+    description: "Full name of the patient being transported"
+  trip_date:
+    label: "Trip Date"
+    description: "Date of the trip (YYYYMMDD)"
+  pickup_address:
+    description: "Patient pickup location. If patient_address is blank, this is assumed to be the same."
+  appointment_location:
+    label: "Appointment Location"
+    description: "Name and/or address of the appointment destination"
+  distance_km:
+    label: "Distance (km)"
+    description: "Round trip distance as read from trip odometer"
+  patient_notes:
+    label: "Patient Notes"
+    textarea: true
+    description: "Notes about the patient, the trip, or anything worth remembering"
+
+optional_properties:
+  appointment_time:
+    label: "Appointment Time"
+    description: "Scheduled appointment time. May vary per trip."
+  appointment_frequency:
+    label: "Appointment Frequency"
+    description: "How often this patient has appointments. E.g. weekly, monthly, singleton, unknown."
+  patient_phone:
+    label: "Patient Phone"
+    description: "Primary phone number. May be contact person's number if patient is assisted."
+  patient_cell:
+    label: "Patient Cell"
+    description: "Cell number. Useful for texting if appropriate."
+
+# LEGACY: file processing pipeline — not used by review UI
+user_review_required: true
+relocatable: false
+review_priority: 5
+patterns: '[
+  {"pattern_type": "filename_contains", "pattern_value": "R2H", "confidence": 0.90},
+  {"pattern_type": "filename_contains", "pattern_value": "r2hodo", "confidence": 0.98},
+  {"pattern_type": "filename_contains", "pattern_value": "Odo-R2H", "confidence": 0.98},
+  {"pattern_type": "file_extension", "pattern_value": ".jpg", "confidence": 0.1}
+]'
+remove_source:
+  value: ask
+  allowed: [move, ask, dup]

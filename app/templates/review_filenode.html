@@ -15,24 +15,26 @@
 
     <!-- Query Tab -->
     <div class="tab-content">
-        <div class="tab-pane active" id="query-pane">
+        <div class="tab-pane active" id="query-pane" style="display: block;">
             <div class="query-form">
                 <form id="filenodeForm">
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Node Path</label>
-                        <input type="text" name="node_path" placeholder="/path/to/node" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">MFN Type</label>
+                        <select id="mfnSelect" name="mfn_id" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Loading...</option>
+                        </select>
                     </div>
-    
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Node Path</label>
+                        <input type="text" id="nodePathInput" name="node_path" placeholder="/path/to/node" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Property Filter</label>
-                        <input type="text" name="property_filter" placeholder="property_name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <input type="text" name="property_filter" placeholder="property: value" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
                     </div>
-    
-                    <label style="display: flex; align-items: center; margin-bottom: 20px;">
-                        <input type="checkbox" name="include_metadata" style="margin-right: 8px;">
-                        Include metadata
-                    </label>
-    
+
                     <button type="submit" style="background: #3498db; color: white; padding: 12px 30px; border: none; border-radius: 4px; cursor: pointer;">
                         Query Node
                     </button>

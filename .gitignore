@@ -67,3 +67,4 @@ app/static/js/paste
 *.cache
 .pytest_cache/
 .coverage
+C/Users/termi/MetaFileQueues/pending/paste

@@ -118,9 +118,19 @@ def handle_discovery(mfi: DiscoveryMFI) -> DiscoveryResultMFI:
     """
     Scan source directory for files matching any of the MFI patterns.
     Returns a DiscoveryResultMFI with one entry per matched file.
+    Patterns may be plain strings or dicts with pattern_type/pattern_value/confidence.
+    Only filename_contains patterns are handled here — extension patterns are ignored
+    (the watcher has no extension-only logic; confidence threshold handles them).
     """
     source = Path(mfi.source)
-    patterns = mfi.patterns  # list of strings e.g. ['busCard', 'BusCard']
+    # Normalise patterns — accept both plain strings and dicts
+    patterns = []
+    for p in mfi.patterns:
+        if isinstance(p, dict):
+            if p.get('pattern_type') == 'filename_contains':
+                patterns.append(p['pattern_value'])
+        else:
+            patterns.append(p)  # plain string, legacy format
 
     if not source.exists():
         raise FileNotFoundError(f"Source directory not found: {source}")

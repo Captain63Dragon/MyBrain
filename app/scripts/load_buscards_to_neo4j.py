@@ -7,16 +7,16 @@ Environment: NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD are supported.
 """
 import os
 import re
-import yaml
-from neo4j import GraphDatabase
+# import yaml
+# from neo4j import GraphDatabase
 from app.services.neo4j_service import create_nodes, ensure_filenode_constraint
 from app.services.schema_service import load_mfn, parse_gfn, map_properties
 
-def neo4j_open_create_nodes(uri, user, password, label, nodes):
-    driver = GraphDatabase.driver(uri, auth=(user, password))
-    with driver.session() as session:
-        create_nodes(session, label, nodes)
-    driver.close()
+# def neo4j_open_create_nodes(uri, user, password, label, nodes):
+#     driver = GraphDatabase.driver(uri, auth=(user, password))
+#     with driver.session() as session:
+#         create_nodes(session, label, nodes)
+#     driver.close()
 
 def main(argv=None):
     import argparse
@@ -30,21 +30,24 @@ def main(argv=None):
 
     mfn = load_mfn(args.mfn)
     nodes = parse_gfn(args.gfn)
-    label = mfn.get("name", "Business Card").replace(" ", "")
+    # label = mfn.get("name", "Business Card").replace(" ", "") # Fallback removed
+    label = mfn.get('label')
+    if not label:
+        raise ValueError(f"MFN missing required 'label' field: {mfn}")
     mapped = [map_properties(mfn, n) for n in nodes]
     print(f"Preparing to load {len(mapped)} nodes into Neo4j as label: {label}")
     
     # Ensure constraint exists (safe to call multiple times)
-    driver = GraphDatabase.driver(args.uri, auth=(args.user, args.password))
-    try:
-        with driver.session() as session:
-            ensure_filenode_constraint(session)
-    finally:
-        driver.close()
+    # driver = GraphDatabase.driver(args.uri, auth=(args.user, args.password))
+    # try:
+    #     with driver.session() as session:
+    #         ensure_filenode_constraint(session)
+    # finally:
+    #     driver.close()
     
-    # Load the nodes
-    neo4j_open_create_nodes(args.uri, args.user, args.password, label, mapped)
-    print(f"Loaded {len(mapped)} nodes into Neo4j label:{label}")
+    # # Load the nodes
+    # neo4j_open_create_nodes(args.uri, args.user, args.password, label, mapped)
+    # print(f"Loaded {len(mapped)} nodes into Neo4j label:{label}")
 
 if __name__ == "__main__":
     main()

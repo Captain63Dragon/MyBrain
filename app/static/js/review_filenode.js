@@ -89,8 +89,8 @@ export function initContentTabs() {
     document.getElementById('filenodeForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
-        // console.log("submit via POST")
-        const response = await fetch('/buscard/query/review_filenode', {
+        const mfnId = document.getElementById('mfnSelect').value;
+        const response = await fetch(`/filenode/query/review_filenode`, {
             method: 'POST',
             body: formData
         });
@@ -98,6 +98,16 @@ export function initContentTabs() {
         const rootpath = document.querySelector('#filenodeForm input[name="node_path"]')?.value || '';
         updateReviewForm(data, rootpath)
         updateUpdateForms(data, rootpath)
+    });
+
+    document.getElementById('mfnSelect')?.addEventListener('change', function() {
+        localStorage.setItem('lastMfnId', this.value);
+        document.querySelector('input[name="property_filter"]').value = '';
+        // TODO: populate node path from MFN path property if needed
+    });
+
+    document.getElementById('nodePathInput')?.addEventListener('change', function() {
+        localStorage.setItem('defaultSearchPath', this.value);
     });
 
     // List view check box select all in table header 
@@ -137,7 +147,8 @@ document.getElementById('delete-selected').addEventListener('click', async () =>
     const selected = getSelectedRecordIds();
     // console.log("Selected is ", selected)
     if (confirm(`Delete ${selected.length} record(s)?`)) {
-        const response = await fetch('/buscard/node/delete', {
+        const prefix = mfn?.route_prefix || 'buscard';
+        const response = await fetch(`/${prefix}/node/delete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nodeIds: selected })
@@ -146,7 +157,6 @@ document.getElementById('delete-selected').addEventListener('click', async () =>
         const result = await response.json();
 
         if (result.status === 'ok') {
-            // your existing UI cleanup code
             selected.forEach(id => {
                 const row = document.getElementById(id)
                 const form = getFormByNodeId(id)
@@ -203,8 +213,9 @@ document.getElementById('execute-action').addEventListener('click', async () => 
     const action = actionSelect.value;
     const selected = getSelectedRecordIds();
     const recordCheckboxes = document.querySelectorAll('.record-checkbox');
+    const prefix = mfn?.route_prefix || 'buscard';
 
-    const dirtySelected = selected.filter(id => {
+        const dirtySelected = selected.filter(id => {
         const form = getFormByNodeId(id);
         return form && formDirtyStates.get(form);
     });
@@ -220,7 +231,7 @@ document.getElementById('execute-action').addEventListener('click', async () => 
             });
 
             for (const update of updates) {
-                const response = await fetch('/buscard/node/update', {
+                const response = await fetch(`/${prefix}/node/update`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(update)
@@ -247,6 +258,7 @@ document.getElementById('execute-action').addEventListener('click', async () => 
             break;
         }
         case 'move': {
+            const displayField = mfn?.display_name_field || null;
             const renameNodes = selected.map(id => {
                 const form = getFormByNodeId(id);
                 const fields = getFormFields(form);
@@ -254,7 +266,7 @@ document.getElementById('execute-action').addEventListener('click', async () => 
                 const lastSlash = filepath.lastIndexOf('\\');
                 return {
                     id: id,
-                    contact: fields.contact_name || null,
+                    contact: displayField ? (fields[displayField] || null) : null,
                     path: lastSlash >= 0 ? filepath.substring(0, lastSlash) : '',
                     file: lastSlash >= 0 ? filepath.substring(lastSlash + 1) : filepath
                 };
@@ -297,7 +309,7 @@ function createRow(fnode, rootpath) {
     cb.addEventListener('change', updateBulkActions);
     tr.appendChild(checkboxTd);
 
-    // Data columns
+    // Data columns — driven by tableMapping, built from mfn.table_columns 
     for (const [className, propName] of Object.entries(tableMapping)) {
         const td = document.createElement('td');
         let newValue = fnode[propName];
@@ -396,13 +408,6 @@ function getFormByNodeId(nodeId) {
 
 function getFormFields(form) {
     const cnt = form.dataset.cnt
-    // console.log('fieldMapping:', fieldMapping);
-    // console.log('cnt:', cnt);
-    // Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
-    //     if (formKey === 'node') return;
-    //     const el = form.querySelector(`[name="${formKey}${cnt}"]`);
-    //     console.log(`${formKey}${cnt} ->`, el ? el.type : 'NOT FOUND', el ? el.value : '');
-    // });
     const fields = {};
     Object.entries(fieldMapping).forEach(([formKey, nodeKey]) => {
         if (formKey === 'node') return;
@@ -676,8 +681,9 @@ function createRecordPanel(record, rootpath, cnt, mfn) {
         e.preventDefault();
         const nodeId = recordForm.dataset.nodeId;
         const fields = getFormFields(recordForm);
+        const prefix = mfn?.route_prefix || 'buscard';
 
-        const response = await fetch('/buscard/node/update', {
+        const response = await fetch(`/${prefix}/node/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nodeId, fields })
@@ -721,11 +727,13 @@ function deleteRecordPanel(form) {
     form.remove();
 }
 
-function createSubTab (record, cnt) {
+function createSubTab(record, cnt) {
     const btn = document.createElement('button')
     btn.className = 'sub-tab-btn'
     if (cnt === 1) btn.classList.add('active');
-    btn.textContent = record['contact_name'] || `Record ${cnt}`
+    // Use MFN display_name_field if available, fall back to Record N
+    const displayField = mfn?.display_name_field || null;
+    btn.textContent = (displayField && record[displayField]) ? record[displayField] : `Record ${cnt}`
     btn.dataset.record = `record${cnt}`;
     return btn
 }
@@ -772,11 +780,13 @@ function updateReviewForm(data, rootpath) {
             mfn = item.meta_file_node;
             mfn.core_properties = JSON.parse(mfn.core_properties);
             mfn.optional_properties = JSON.parse(mfn.optional_properties);
-            // Build fieldMapping and tableMapping now that mfn is available
+            // table_columns comes from graph as a native list — no parse needed
+            // Build fieldMapping from MFN properties
             fieldMapping = { 'node': 'FILE-NODE-id', 'filepath': 'filepath', 'reviewed': 'reviewed' };
             for (const prop of Object.keys(mfn.core_properties)) fieldMapping[prop] = prop;
             for (const prop of Object.keys(mfn.optional_properties)) fieldMapping[prop] = prop;
-            const tableColumns = ['node', 'category', 'contact_name', 'phone', 'cell', 'description', 'filepath'];
+            // tableMapping driven by mfn.table_columns — MFN owns the list view column definition
+            const tableColumns = mfn.table_columns || ['node', 'filepath'];
             tableMapping = Object.fromEntries(
                 tableColumns
                     .filter(key => key in fieldMapping)
@@ -805,7 +815,7 @@ function updateReviewForm(data, rootpath) {
     document.getElementById('results').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
 }
 
-// #### Rename and or Move table helper functions. 
+// #### Rename and or Move table helper functions ####
 function onRenameEdit(input, i) {
     const pathInp = document.getElementById(`rpath-${i}`);
     const fileInp = document.getElementById(`rfile-${i}`);
@@ -1010,12 +1020,13 @@ async function dispatchRenameRow(i, move_intent) {
     const node = window._renameNodes[i];
     const pathInp = document.getElementById(`rpath-${i}`);
     const fileInp = document.getElementById(`rfile-${i}`);
+    const prefix = mfn?.route_prefix || 'buscard';
 
     const source = node.path + '\\' + node.file;
     const target = pathInp.value + '\\' + fileInp.value;
 
     try {
-        const response = await fetch('/buscard/dispatch', {
+        const response = await fetch(`/${prefix}/dispatch`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
