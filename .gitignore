@@ -1,11 +1,52 @@
-node_modules/
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 venv/
-.git/
-.eslintrc.json
-.env
-.DS_Store
+venv_312/
+venv39/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+dist/
+build/
+
+# Logs
 *.log
+logs/
+app/logs/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.eslintrc.json
+
+# Node
+node_modules/
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# Neo4j data (if mounted locally)
+neo4j/data/
+neo4j/logs/
+
+# Project-specific
 myStructure.txt
 *Experiment*
 sampleStructure.yaml
@@ -14,3 +55,15 @@ junk.js
 1402_1010-ancient-document.txt
 run.bat
 app/Schema/GFN-busCard-dropbox_[0-9][0-9][0-9].yaml
+requirements-39-snapshot.txt
+
+# Temp/cache
+app/planning/.gemini/
+app/chats/temp*
+app/planning/*_bak.py
+app/scripts/test_*.py
+app/static/js/paste
+*.tmp
+*.cache
+.pytest_cache/
+.coverage
