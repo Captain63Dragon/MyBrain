@@ -116,41 +116,55 @@ def handle_copy(mfi: CopyMFI) -> CopyResultMFI:
 
 def handle_discovery(mfi: DiscoveryMFI) -> DiscoveryResultMFI:
     """
-    Scan source directory for files matching any of the MFI patterns.
-    Returns a DiscoveryResultMFI with one entry per matched file.
+    Two modes:
+      - File list:      mfi.files populated → process those paths directly, no scan.
+      - Directory scan: mfi.source + mfi.patterns → scan directory for matches.
     Patterns may be plain strings or dicts with pattern_type/pattern_value/confidence.
-    Only filename_contains patterns are handled here — extension patterns are ignored
-    (the watcher has no extension-only logic; confidence threshold handles them).
     """
-    source = Path(mfi.source)
-    # Normalise patterns — accept both plain strings and dicts
+    # Normalise patterns
     patterns = []
     for p in mfi.patterns:
         if isinstance(p, dict):
             if p.get('pattern_type') == 'filename_contains':
                 patterns.append(p['pattern_value'])
         else:
-            patterns.append(p)  # plain string, legacy format
-
-    if not source.exists():
-        raise FileNotFoundError(f"Source directory not found: {source}")
+            patterns.append(p)
 
     matched_files = []
 
-    for filepath in source.iterdir():
-        if not filepath.is_file():
-            continue
+    # ── File list mode ────────────────────────────────────────────────────────
+    if mfi.files:
+        for filepath_str in mfi.files:
+            filepath = Path(filepath_str)
+            if not filepath.is_file():
+                print(f"[discovery] file not found, skipping: {filepath_str}")
+                continue
+            entry = parse_filename(filepath.name, '')  # no mask in explicit mode
+            entry['filepath'] = str(filepath)
+            entry['mtime'] = datetime.fromtimestamp(
+                filepath.stat().st_mtime
+            ).strftime("%Y_%m%d")
+            matched_files.append(entry)
 
-        filename = filepath.name
-        for mask in patterns:
-            if mask in filename:
-                entry = parse_filename(filename, mask)
-                entry['filepath'] = str(filepath)
-                entry['mtime'] = datetime.fromtimestamp(
-                    filepath.stat().st_mtime
-                ).strftime("%Y_%m%d")
-                matched_files.append(entry)
-                break  # first mask match wins
+    # ── Directory scan mode ───────────────────────────────────────────────────
+    else:
+        source = Path(mfi.source)
+        if not source.exists():
+            raise FileNotFoundError(f"Source directory not found: {source}")
+
+        for filepath in source.iterdir():
+            if not filepath.is_file():
+                continue
+            filename = filepath.name
+            for mask in patterns:
+                if mask in filename:
+                    entry = parse_filename(filename, mask)
+                    entry['filepath'] = str(filepath)
+                    entry['mtime'] = datetime.fromtimestamp(
+                        filepath.stat().st_mtime
+                    ).strftime("%Y_%m%d")
+                    matched_files.append(entry)
+                    break  # first mask match wins
 
     return _make_result(DiscoveryResultMFI,
                         source_mfi_id = mfi.mfi_id,
@@ -246,7 +260,8 @@ def run(watch: bool = False, interval: int = 10):
             if not watch:
                 print("No pending MFI files. Exiting.")
                 break
-            print(f"Nothing pending. Checking again in {interval}s...")
+            print("=", end="", flush=True)
+            # print(f"Nothing pending. Checking again in {interval}s...")
 
         if not watch:
             break

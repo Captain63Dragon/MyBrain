@@ -85,7 +85,6 @@ STATIC_TOOL_ASSIGNMENTS = {
     'ping': 'all',
     'mfn_list': 'iris',
     'bots_register': 'iris',
-    'buscard_dispatch': 'iris',
     'r2hodo_dispatch': 'iris'
     # TODO: change iris to rex when migrating tools 
     # buscard_process: DEPRECATED - not assigned to anyone
@@ -97,7 +96,6 @@ STATIC_TOOLS = [
     {"name": "ping", "description": "Ping Flask + Neo4j", "inputSchema": {"type": "object", "properties": {}}},
     {"name": "mfn_list", "description": "List MFN types", "inputSchema": {"type": "object", "properties": {}}},
     {"name": "bots_register", "description": "Register bots", "inputSchema": {"type": "object", "properties": {"reason": {"type": "string"}}}},
-    {"name": "buscard_dispatch", "description": "Dispatch buscard", "inputSchema": {"type": "object", "required": ["action", "mfn_id"], "properties": {"action": {"type": "string", "enum": ["discovery", "move", "archive", "insitu_copy", "copy_master_source", "copy_master_target"]}, "mfn_id": {"type": "string"}, "source": {"type": "string"}, "target": {"type": "string"}, "node_id": {"type": "string"}, "patterns": {"type": "array"}}}},
     {"name": "buscard_process", "description": "Process buscards", "inputSchema": {"type": "object", "required": ["action"], "properties": {"action": {"type": "string", "enum": ["discovery", "copy", "move"]}}}},
     {"name": "r2hodo_dispatch", "description": "Dispatch R2HOdo", "inputSchema": {"type": "object", "required": ["action", "mfn_id"], "properties": {"action": {"type": "string", "enum": ["discovery"]}, "mfn_id": {"type": "string"}, "source": {"type": "string"}, "patterns": {"type": "array"}}}},
     {"name": "r2hodo_process", "description": "Process R2HOdo", "inputSchema": {"type": "object", "required": ["action"], "properties": {"action": {"type": "string", "enum": ["discovery"]}}}}
@@ -213,28 +211,13 @@ def execute_tool_by_name(name, args, caller="unknown"):
 
     if name in BOT_TOOLS:
         # Map bot tool names to their hardcoded Flask routes (legacy Vera bots)
-        bot_routes = {
-            "vera_todos_get_pending": "/bots/vera/todos/pending",
-            "vera_todos_get_friction_items": "/bots/vera/todos/friction",
-            "vera_filenodes_get_unreviewed": "/bots/vera/filenodes/unreviewed",
-            "vera_r2hodo_get_unsubmitted": "/bots/vera/r2hodo/unsubmitted",
-            "vera_ideas_get_pending": "/bots/vera/ideas/pending",
-        }
-        
-        route = bot_routes.get(name)
-        
-        if route:
-            # Use legacy hardcoded route for Vera bots
-            log(f"  Routing to legacy endpoint: {route}")
-            result = flask_post(route, args)
-        else:
-            # Use generic /bots/execute endpoint for new bots
-            bot_id = name.replace("_", ".")  # "iris_analytics_measure_tokens" -> "iris.analytics.measure.tokens"
-            log(f"  Routing to /bots/execute with bot_id: {bot_id}")
-            result = flask_post("/bots/execute", {
-                "bot_id": bot_id, 
-                "params": {**args, "persona": PERSONA}  # Add persona to params
-            })
+        # Use generic /bots/execute endpoint for all bots
+        bot_id = name.replace("_", ".")  # "vera_todos_get" -> "vera.todos.get"
+        log(f"  Routing to /bots/execute with bot_id: {bot_id}")
+        result = flask_post("/bots/execute", {
+            "bot_id": bot_id,
+            "params": {**args, "persona": PERSONA}
+        })
         
         if isinstance(result, dict) and "error" in result:
             raise RuntimeError(result["error"])
@@ -246,10 +229,6 @@ def execute_tool_by_name(name, args, caller="unknown"):
         return flask_get("/mfn/list")
     elif name == "bots_register":
         return flask_post("/bots/register", args)
-    elif name == "buscard_dispatch":
-        if args.get("action") not in ALLOWED_BUSCARD_ACTIONS:
-            raise RuntimeError("Action not permitted")
-        return flask_post("/buscard/dispatch", args)
     elif name == "buscard_process":
         return flask_post("/buscard/process", args)
     elif name == "r2hodo_dispatch":
@@ -261,7 +240,7 @@ def execute_tool_by_name(name, args, caller="unknown"):
     else:
         raise RuntimeError(f"Unknown tool: {name}")
 
-
+# I think this is dead code as well.
 def handle_tool_call(call_id, name, args):
     log(f"[SYNC handle_tool_call] ENTER — SYNC PATH IS ALIVE! call_id={call_id} tool={name}")
     try:
