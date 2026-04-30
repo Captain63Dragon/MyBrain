@@ -8,7 +8,7 @@ $daily_target = defined('DAILY_CALORIES') ? DAILY_CALORIES : 1800;
 
 function get_library(PDO $db): array {
     try {
-        $stmt = $db->query("SELECT item_name, venue, category, calories, unit_desc, iris_rating FROM food_library ORDER BY category, venue, item_name");
+        $stmt = $db->query("SELECT item_name, venue, category, calories, unit_desc, mia_rating FROM food_library ORDER BY category, venue, item_name");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { return []; }
 }
@@ -51,6 +51,29 @@ function parse_portion_pct(string $portion): int {
     return 100;
 }
 
+function get_categories(PDO $db): array {
+    $base = ['restaurant', 'snack', 'breakfast-home', 'lunch-home', 'dinner-home', 'cheat'];
+    try {
+        $stmt = $db->query("SELECT DISTINCT category FROM food_library ORDER BY category");
+        $db_cats = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'category');
+        return array_values(array_unique(array_merge($base, $db_cats)));
+    } catch (Exception $e) { return $base; }
+}
+
+function category_label_from_slug(string $slug): string {
+    $map = [
+        'restaurant'     => 'Restaurant',
+        'snack'          => 'Snack',
+        'breakfast'      => 'Breakfast',
+        'breakfast-home' => 'Breakfast — Home',
+        'lunch-home'     => 'Lunch — Home',
+        'dinner-home'    => 'Dinner — Home',
+        'eat-out'        => 'Eat Out',
+        'cheat'          => 'Cheat Day',
+    ];
+    return $map[$slug] ?? ucwords(str_replace('-', ' ', $slug));
+}
+
 function lookup_calories(PDO $db, string $item, string $venue): ?int {
     try {
         $stmt = $db->prepare("SELECT calories FROM food_library WHERE item_name = ? AND venue = ? LIMIT 1");
@@ -73,11 +96,13 @@ $portion      = '100%';
 try {
     $db             = get_db();
     $library        = get_library($db);
+    $categories     = get_categories($db);
     $today_consumed = get_today_consumed($db);
     $today_balance  = $daily_target - $today_consumed;
     $streak         = get_streak($db);
 } catch (Exception $e) {
-    $library = []; $today_balance = $daily_target; $streak = [];
+    $base_cats  = ['restaurant', 'snack', 'breakfast-home', 'lunch-home', 'dinner-home', 'cheat'];
+    $library    = []; $categories = $base_cats; $today_balance = $daily_target; $streak = [];
     $error = 'DB: ' . $e->getMessage();
 }
 
@@ -227,7 +252,7 @@ select option { background: #1e2026; }
         <div class="field-row"><span class="field-label">notes</span><span class="field-val"><?= htmlspecialchars($logged_entry['notes']) ?></span></div>
         <?php endif ?>
         <?php if ($logged_entry['unverified']): ?>
-        <div class="unverified-note">&#x26A0; New item &mdash; pending Iris review</div>
+        <div class="unverified-note">&#x26A0; New item &mdash; pending Mia review</div>
         <?php endif ?>
     </div>
     <a class="another-btn" href="/tops">+ Log another</a>
@@ -243,11 +268,9 @@ select option { background: #1e2026; }
             <label>Category</label>
             <select id="sel-category" name="category" onchange="onCategory(this.value)">
                 <option value="">Select&hellip;</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="snack">Snack</option>
-                <option value="breakfast-home">Breakfast &mdash; Home</option>
-                <option value="lunch-home">Lunch &mdash; Home</option>
-                <option value="dinner-home">Dinner &mdash; Home</option>
+                <?php foreach ($categories as $cat): ?>
+                <option value="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars(category_label_from_slug($cat)) ?></option>
+                <?php endforeach ?>
             </select>
         </div>
         <div class="field hidden" id="w-venue">
@@ -299,10 +322,14 @@ lib.forEach(row => {
     if (!lookup[cat][venue]) lookup[cat][venue] = [];
     lookup[cat][venue].push(row.item_name);
 });
-const staticVenues = {
-    'restaurant':[],'snack':['many','single','combo'],
-    'breakfast-home':['favorite'],'lunch-home':['prepared-food'],'dinner-home':[],
-};
+const staticVenues = <?= json_encode([
+    'restaurant'     => [],
+    'snack'          => ['many', 'single', 'combo', 'travel'],
+    'breakfast-home' => ['favorite'],
+    'lunch-home'     => ['prepared-food'],
+    'dinner-home'    => ['home'],
+    'cheat'          => [],
+], JSON_UNESCAPED_UNICODE) ?>;
 function show(id){document.getElementById(id).classList.remove('hidden');}
 function hide(id){document.getElementById(id).classList.add('hidden');}
 function resetFrom(){
