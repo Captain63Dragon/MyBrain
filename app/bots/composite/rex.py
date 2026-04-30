@@ -62,7 +62,7 @@ def register_bots(session=None, reason: str = "", log_call: bool = True) -> dict
                     bots_data = _parse_bot_file(filepath, bots_dir)
                     
                     for bot_data in bots_data:
-                        # Serialize params to JSON string for Neo4j
+                        # Serialize params JSON Schema to string for Neo4j storage
                         bot_data['params'] = json.dumps(bot_data['params'])
                         
                         # MERGE bot node
@@ -104,82 +104,167 @@ def register_bots(session=None, reason: str = "", log_call: bool = True) -> dict
             session.__exit__(None, None, None)
 
 
+def _py_type_to_json_schema(type_hint: str) -> dict:
+    """
+    Convert a Python type annotation string to a JSON Schema property object.
+
+    Handles simple types, Optional/None unions, and basic generics (list[str]).
+    Returns {} for ambiguous unions (e.g. str | list | None) — unconstrained
+    is better than wrong.
+
+    Internal params (session, log_call) should be stripped before calling this;
+    they are never passed by callers and must not appear in the schema.
+    """
+    # Strip surrounding quotes and whitespace (type hints written as strings:
+    # status: 'str | list | None' = ... )
+    type_hint = type_hint.strip().strip("'\"")
+
+    # Split union, drop None — we don't use JSON Schema nullable in this system
+    parts = [p.strip() for p in type_hint.split('|') if p.strip().lower() != 'none']
+
+    if not parts:
+        return {}
+
+    # Ambiguous union (more than one non-None type) — leave unconstrained
+    if len(parts) > 1:
+        return {}
+
+    raw = parts[0].lower()
+
+    # Handle generics: list[str], list[dict], etc.
+    base = raw.split('[')[0].strip()
+
+    TYPE_MAP = {
+        'str':   'string',
+        'int':   'integer',
+        'float': 'number',
+        'bool':  'boolean',
+        'dict':  'object',
+        'list':  'array',
+    }
+
+    json_type = TYPE_MAP.get(base)
+    if json_type is None:
+        return {}  # 'any' or unknown — unconstrained
+
+    if base == 'list' and '[' in raw:
+        inner_raw = raw[raw.index('[') + 1: raw.rindex(']')].strip()
+        inner_json = TYPE_MAP.get(inner_raw)
+        if inner_json:
+            return {'type': 'array', 'items': {'type': inner_json}}
+
+    return {'type': json_type}
+
+
+# Params that are infrastructure — never exposed in the MCP tool schema.
+_INTERNAL_PARAMS = {'session', 'log_call'}
+
+
 def _parse_bot_file(filepath: Path, bots_dir: Path) -> list[dict]:
     """
     Parse a bot Python file and extract metadata for all bot functions.
-    
+
+    Produces a proper JSON Schema object for each bot's params field:
+        {"type": "object", "required": [...], "properties": {...}}
+
+    Rules:
+    - All params captured (not just those with defaults).
+    - Params without defaults are added to "required".
+    - session and log_call are excluded — internal infrastructure.
+    - Python type annotations are mapped to JSON Schema types.
+    - Ambiguous unions (e.g. str | list | None) become {} (unconstrained).
+
+    Bot-id constants must follow the naming convention:
+        SOMETHING_FN_SOMETHING = "bot.id.here"   (standard)
+        BOT_ID = "bot.id.here"                   (single-bot files)
+
     Returns list of bot metadata dicts, one per bot function found in file.
     """
     bots = []
-    
+
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
-    
+
     # Derive module path from filepath
     # e.g., app/bots/db/vera.py -> app.bots.db.vera
     relative_path = filepath.relative_to(bots_dir.parent)
     module = str(relative_path.with_suffix('')).replace(os.sep, '.')
-    
-    # Find all bot-id constant definitions
-    # Pattern: SOME_FN_CONSTANT = "bot.id.here"
-    # Allow digits in constant names (e.g., R2HOdo) and bot IDs
-    bot_id_pattern = r'^([A-Z0-9_]+_FN[A-Z0-9_]*)\s*=\s*["\']([a-z.0-9_]+)["\']'
+
+    # Find all bot-id constant definitions.
+    # Matches: SOME_FN_CONSTANT = "bot.id"  (standard multi-bot files)
+    #          BOT_ID = "bot.id"             (single-bot files like dispatch/iris.py)
+    bot_id_pattern = r'^([A-Z0-9_]+_FN[A-Z0-9_]*|BOT_ID)\s*=\s*["\']([a-z.0-9_]+)["\']'
     bot_ids = re.findall(bot_id_pattern, content, re.MULTILINE)
-    
+
     # For each bot-id, find its corresponding function
     for constant_name, bot_id in bot_ids:
-        # Find the function definition after this constant
-        # Pattern: look for def function_name after the constant
         function_pattern = rf'{re.escape(constant_name)}.*?^def\s+(\w+)\s*\((.*?)\)\s*->\s*([^:]+):'
         match = re.search(function_pattern, content, re.MULTILINE | re.DOTALL)
-        
+
         if not match:
             continue
-        
+
         function_name = match.group(1)
         params_str = match.group(2)
         returns_str = match.group(3).strip()
-        
-        # Extract docstring
+
+        # Extract docstring — look for "Use case:" line
         docstring_pattern = rf'def\s+{re.escape(function_name)}.*?"""(.*?)"""'
         doc_match = re.search(docstring_pattern, content, re.DOTALL)
-        
+
         use_case = ""
         if doc_match:
             docstring = doc_match.group(1)
-            # Extract "Use case:" line
             use_case_match = re.search(r'Use case:\s*(.+?)(?:\n|$)', docstring)
             if use_case_match:
                 use_case = use_case_match.group(1).strip()
-        
-        # Parse parameters (simplified - just extract names and default types)
-        params = {}
+
+        # Build JSON Schema from parameter list.
+        # Captures ALL params; tracks required (no default) vs optional (has default).
+        properties = {}
+        required = []
+
         if params_str:
-            param_parts = [p.strip() for p in params_str.split(',')]
+            param_parts = [p.strip() for p in params_str.split(',') if p.strip()]
             for part in param_parts:
-                if '=' in part:
-                    # Has default value
-                    name_type, default = part.split('=', 1)
-                    name = name_type.split(':')[0].strip()
-                    type_hint = name_type.split(':')[1].strip() if ':' in name_type else 'any'
-                    params[name] = type_hint
-        
-        # Find REQUIRES set in file (assumes one per file for now)
+                has_default = '=' in part
+                name_type_str = part.split('=')[0].strip()
+
+                if ':' in name_type_str:
+                    name = name_type_str.split(':')[0].strip()
+                    type_hint = name_type_str.split(':', 1)[1].strip()
+                else:
+                    name = name_type_str.strip()
+                    type_hint = 'any'
+
+                if not name or name in _INTERNAL_PARAMS:
+                    continue
+
+                prop = _py_type_to_json_schema(type_hint)
+                properties[name] = prop
+
+                if not has_default:
+                    required.append(name)
+
+        input_schema = {'type': 'object', 'properties': properties}
+        if required:
+            input_schema['required'] = required
+
+        # Find REQUIRES set in file (one per file)
         requires = []
         requires_match = re.search(r'REQUIRES\s*=\s*\{([^}]+)\}', content)
         if requires_match:
             requires_content = requires_match.group(1)
-            # Extract quoted strings
             requires = re.findall(r'["\']([^"\']+)["\']', requires_content)
-        
+
         bots.append({
             'bot_id': bot_id,
             'module': module,
             'function': function_name,
             'requires': requires,
             'use_case': use_case,
-            'params': params,
+            'params': input_schema,
             'returns': returns_str
         })
-    
+
     return bots

@@ -86,3 +86,18 @@ def vera_ideas_pending():
     
     result = get_pending_ideas(reason=reason)
     return jsonify(result)
+
+# ── Zaudi sync ────────────────────────────────────────────────────────────────
+
+@base_bp.route('/sync/zaudi/todos', methods=['POST'])
+def sync_zaudi_todos():
+    """Run full Zaudi todo sync cycle — ingest unsynced + push Neo4j snapshot."""
+    from app.services.api_service import run_sync_cycle
+
+    data   = request.get_json() or {}
+    reason = data.get('reason', 'manual sync via API')
+
+    result = run_sync_cycle(reason=reason)
+
+    status_code = 500 if result.get('status') == 'error' else 200
+    return jsonify(result), status_code

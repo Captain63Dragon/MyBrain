@@ -1,8 +1,9 @@
 # app/bots/db/vera.py
 
 from app.bots import bot_logger as log
-from app.services.neo4j_service import get_session
+from app.services.neo4j_service import get_session, resolve_actor
 from app.shared.datetime_utils import to_neo4j as parse_timestamp, to_python as parse_to_datetime
+from app.bots.db.graph import create_relationship
 
 REQUIRES = {'neo4j'}
 
@@ -18,7 +19,7 @@ def _serialize_record(record: dict) -> dict:
             result[key] = value
     return result
 
-# ── vera.todos.get_pending ────────────────────────────────────────────────────
+# -- vera.todos.get_pending ----------------------------------------------------
 
 VERA_FN_TODOS_PENDING = "vera.todos.get_pending"
 
@@ -48,7 +49,7 @@ def get_pending_todos(session=None, reason: str = "", log_call: bool = True) -> 
         if _owned and session:
             session.__exit__(None, None, None)
 
-# ── vera.todos.get_friction_items ─────────────────────────────────────────────
+# -- vera.todos.get_friction_items ---------------------------------------------
 
 VERA_FN_TODOS_FRICTION = "vera.todos.get_friction_items"
 DEFAULT_FRICTION_TYPES = ["phone-call", "difficult", "waiting-on-other", "hated-meeting"]
@@ -81,7 +82,7 @@ def get_friction_todos(session=None, friction_types: list[str] = None, reason: s
         if _owned and session:
             session.__exit__(None, None, None)
 
-# ── vera.filenodes.get_unreviewed ─────────────────────────────────────────────
+# -- vera.filenodes.get_unreviewed ---------------------------------------------
 
 VERA_FN_FILENODES_UNREVIEWED = "vera.filenodes.get_unreviewed"
 
@@ -119,7 +120,7 @@ def get_unreviewed_filenodes(session=None, mfn_type: str = None, reason: str = "
         if _owned and session:
             session.__exit__(None, None, None)
 
-# ── vera.r2hodo.get_unsubmitted ───────────────────────────────────────────────
+# -- vera.r2hodo.get_unsubmitted ----------------------------------------------
 
 VERA_FN_R2HODO_UNSUBMITTED = "vera.r2hodo.get_unsubmitted"
 
@@ -150,7 +151,7 @@ def get_unsubmitted_r2hodo(session=None, reason: str = "", log_call: bool = True
         if _owned and session:
             session.__exit__(None, None, None)
 
-# ── vera.ideas.get_pending ────────────────────────────────────────────────────
+# -- vera.ideas.get_pending ---------------------------------------------------
 
 VERA_FN_IDEAS_PENDING = "vera.ideas.get_pending"
 
@@ -178,7 +179,7 @@ def get_pending_ideas(session=None, reason: str = "", log_call: bool = True) -> 
         if _owned and session:
             session.__exit__(None, None, None)
 
-# ── vera.todos.get ───────────────────────────────────────────────────────────
+# -- vera.todos.get -----------------------------------------------------------
 
 VERA_FN_TODOS_GET = "vera.todos.get"
 ACTIVE_STATUSES = ['open', 'pending', 'in_progress']
@@ -193,10 +194,12 @@ def get_todos(
     day_range: 'int | None' = None,
     timestamp: 'str | None' = None,
     limit: 'int | None' = None,
+    include_notes: bool = True,
+    owner: 'str | None' = None,
     reason: str = "",
     log_call: bool = True,
 ) -> list[dict]:
-    """Flexible todo query. Use for any todo retrieval — daily review, priority
+    """Flexible todo query. Use for any todo retrieval -- daily review, priority
     triage, friction checks, deferred backlog, or time-windowed lookups.
     Replaces get_pending_todos and get_friction_todos.
 
@@ -206,8 +209,8 @@ def get_todos(
     day_range: +-N days relative to timestamp (or now); negative = past window
     timestamp: ISO anchor for day_range; defaults to now()
     limit:     cap on results; None = no cap
+    owner:     'user' | persona name | None (all owners)
     """
-    # Resolve status keyword
     if status == 'active':
         status_list = ACTIVE_STATUSES
     elif status in ('all', None):
@@ -224,6 +227,7 @@ def get_todos(
         if day_range is not None:   parts.append(f"day_range={day_range}")
         if timestamp:               parts.append(f"anchor={timestamp}")
         if limit:                   parts.append(f"limit={limit}")
+        if owner:                   parts.append(f"owner={owner}")
         log.call(VERA_FN_TODOS_GET, reason=reason, detail=" | ".join(parts))
 
     exclude = exclude or []
@@ -241,14 +245,17 @@ def get_todos(
         conditions.append("t.status <> 'open'")
 
     if priority:
-        priority = priority.lower()  # Enforce lowercase — stored values are lowercase
+        priority = priority.lower()
         conditions.append("t.priority = $priority")
         params['priority'] = priority
 
     if 'friction' in exclude:
         conditions.append("(t.friction IS NULL OR t.friction = 'none')")
 
-    # Day range window
+    if owner:
+        conditions.append("t.owner = $owner")
+        params['owner'] = owner
+
     if day_range is not None:
         parsed = parse_timestamp(timestamp) if timestamp else None
         anchor_expr = "datetime($anchor)" if parsed else "datetime()"
@@ -263,13 +270,16 @@ def get_todos(
 
     where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
     limit_clause = f"LIMIT {limit}" if limit else ""
+    notes_field = ", t.notes AS notes" if include_notes else ""
 
     cypher = f"""
         MATCH (t:Todo)
         {where_clause}
         RETURN t.`todo-id` AS id, t.description AS description,
                t.priority AS priority, t.friction AS friction,
-               t.status AS status, t.created AS created, t.due AS due
+               t.status AS status, t.owner AS owner,
+               t.created AS created, t.due AS due
+               {notes_field}
         ORDER BY
           CASE t.priority
             WHEN 'high' THEN 1
@@ -294,7 +304,172 @@ def get_todos(
         if _owned and session:
             session.__exit__(None, None, None)
 
-# ── vera.todos.update ─────────────────────────────────────────────────────────
+# -- vera.todos.create -------------------------------------------------------
+
+VERA_FN_TODOS_CREATE = "vera.todos.create"
+
+def create_todo(
+    session=None,
+    description: str = None,
+    priority: str = "medium",
+    status: str = "open",
+    friction: str = None,
+    due: str = None,
+    notes: str = None,
+    source_pin: str = None,
+    owner: str = "user",
+    made_by: str = "Vera",
+    follows_from: str = None,
+    reason: str = "",
+    log_call: bool = True,
+) -> dict:
+    """Create a Todo node and wire relationships.
+    ASSIGNED: always wired -- owner defaults to User, override with Persona name.
+    MADE_TODO: wired unless made_by is 'Vera' (her lane by default).
+    FOLLOWS_FROM: wired if follows_from todo-id provided -- non-fatal if parent not found.
+
+    Relationship sub-calls log at depth [1] via log.sub_call() context manager.
+    """
+    if not description:
+        return {"error": "description is required"}
+
+    if log_call and reason:
+        log.call(VERA_FN_TODOS_CREATE, reason=reason, detail=f"owner={owner} made_by={made_by} priority={priority}")
+
+    import time
+    todo_id = f"todo-{int(time.time() * 1000)}"
+
+    props = {
+        "todo-id": todo_id,
+        "description": description,
+        "priority": priority.lower() if priority else "medium",
+        "status": status,
+        "owner": owner,
+    }
+    if friction:   props["friction"]   = friction
+    if due:        props["due"]        = due
+    if notes:      props["notes"]      = notes
+    if source_pin: props["source_pin"] = source_pin
+
+    _owned = session is None
+    try:
+        if _owned:
+            session = get_session().__enter__()
+
+        result = session.run("""
+            CREATE (t:Todo $props)
+            SET t.created = datetime()
+            RETURN t
+        """, props=props)
+        record = result.single()
+        if not record:
+            return {"error": "Todo creation failed"}
+
+        # Wire ASSIGNED -- sub-call logged at [1] depth
+        actor_label, actor_match = resolve_actor(owner)
+        with log.sub_call():
+            create_relationship(
+                source_label=actor_label, source_match=actor_match,
+                target_label='Todo',      target_match={'todo-id': todo_id},
+                rel_type='ASSIGNED',
+                session=session, reason=reason, log_call=log_call,
+            )
+
+        # Wire MADE_TODO -- skipped if made_by is Vera (her lane by default)
+        if made_by and made_by.lower() != 'vera':
+            made_label, made_match = resolve_actor(made_by)
+            with log.sub_call():
+                create_relationship(
+                    source_label=made_label, source_match=made_match,
+                    target_label='Todo',    target_match={'todo-id': todo_id},
+                    rel_type='MADE_TODO',
+                    session=session, reason=reason, log_call=log_call,
+                )
+
+        # Wire FOLLOWS_FROM -- non-fatal if parent not found
+        if follows_from:
+            with log.sub_call():
+                rel_result = create_relationship(
+                    source_label="Todo", source_match={"todo-id": todo_id},
+                    target_label="Todo", target_match={"todo-id": follows_from},
+                    rel_type="FOLLOWS_FROM",
+                    session=session, reason=reason, log_call=log_call,
+                )
+            if "error" in rel_result:
+                log.error(VERA_FN_TODOS_CREATE, reason=reason, detail=f"follows_from not found: {follows_from} -- continuing")
+
+        return _serialize_record(dict(record["t"]))
+
+    except Exception as e:
+        log.error(VERA_FN_TODOS_CREATE, reason=reason, detail=str(e))
+        return {"error": str(e)}
+    finally:
+        if _owned and session:
+            session.__exit__(None, None, None)
+
+
+# -- vera.notes.create -------------------------------------------------------
+
+VERA_FN_NOTES_CREATE = "vera.notes.create"
+
+def create_note(
+    session=None,
+    note_id: str = None,
+    description: str = None,
+    body: str = None,
+    source_pin: str = None,
+    tags: str = None,
+    reason: str = "",
+    log_call: bool = True,
+) -> dict:
+    """Create a Note node -- reference material that is not actionable.
+    No status, priority, friction, or ASSIGNED relationship.
+    Called by mail_service.route() when node_type == 'note'.
+    note_id: caller-supplied (e.g. 'note-1776883139195') or auto-generated.
+    """
+    if not description:
+        return {"error": "description is required"}
+
+    if log_call and reason:
+        log.call(VERA_FN_NOTES_CREATE, reason=reason, detail=f"description={description[:40]}")
+
+    import time
+    if not note_id:
+        note_id = f"note-{int(time.time() * 1000)}"
+
+    props = {
+        "note-id":     note_id,
+        "description": description,
+    }
+    if body:       props["body"]       = body
+    if source_pin: props["source_pin"] = source_pin
+    if tags:       props["tags"]       = tags
+
+    _owned = session is None
+    try:
+        if _owned:
+            session = get_session().__enter__()
+
+        result = session.run("""
+            CREATE (n:Note $props)
+            SET n.created = datetime()
+            RETURN n
+        """, props=props)
+        record = result.single()
+        if not record:
+            return {"error": "Note creation failed"}
+
+        return _serialize_record(dict(record["n"]))
+
+    except Exception as e:
+        log.error(VERA_FN_NOTES_CREATE, reason=reason, detail=str(e))
+        return {"error": str(e)}
+    finally:
+        if _owned and session:
+            session.__exit__(None, None, None)
+
+
+# -- vera.todos.update -------------------------------------------------------
 
 VERA_FN_TODOS_UPDATE = "vera.todos.update"
 
@@ -307,12 +482,9 @@ def update_todo(session=None, todo_id: str = None, updates: dict = None, reason:
         log.error(VERA_FN_TODOS_UPDATE, reason=reason, detail="Missing todo_id or updates")
         return {"error": "Missing required parameters: todo_id and updates"}
 
-    # Enforce lowercase priority before write
     if 'priority' in updates and updates['priority']:
         updates['priority'] = updates['priority'].lower()
 
-    # Coerce created through to_python — Neo4j driver converts Python datetime to native DateTime type
-    # due is date-only and stays as a string
     if 'created' in updates and updates['created']:
         parsed = parse_to_datetime(updates['created'])
         if parsed:
