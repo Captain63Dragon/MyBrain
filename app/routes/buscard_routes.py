@@ -121,9 +121,10 @@ def dispatch_action():
     elif action == 'discovery':
         scan_path = data.get('source')
         patterns  = data.get('patterns', [])
-        if not scan_path:
-            return jsonify({'error': 'discovery requires source'}), 400
-        mfi = DiscoveryMFI(mfn_id=mfn_id, source=scan_path, patterns=patterns)
+        files     = data.get('files', [])
+        if not scan_path and not files:
+            return jsonify({'error': 'discovery requires source (directory) or files (list)'}), 400
+        mfi = DiscoveryMFI(mfn_id=mfn_id, source=scan_path or '', patterns=patterns, files=files)
 
     else:
         return jsonify({'error': f'Unknown action: {action}'}), 400

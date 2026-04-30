@@ -26,6 +26,7 @@ services:
       - MFI_PATH=/mfi
     volumes:
       - .:/app
+      - ~/.netrc:/tmp/.netrc-src:ro
       - ${MFI_PATH}:/mfi
     depends_on:
       - mybrain-neo4j

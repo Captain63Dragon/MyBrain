@@ -53,6 +53,15 @@ def processing_path() -> Path:
 def completed_path() -> Path:
     return get_mfi_root() / 'completed'
 
+def email_archive_path() -> Path:
+    return get_mfi_root() / 'email' / 'archive-raw'
+
+def email_queue_path() -> Path:
+    return get_mfi_root() / 'email' / 'vera-queue'
+
+def tops_path() -> Path:
+    return get_mfi_root() / 'tops'
+
 
 # ---------------------------------------------------------------------------
 # Base and action-specific dataclasses — data only, no logic
@@ -69,11 +78,17 @@ class MFIBase:
 
 @dataclass
 class DiscoveryMFI(MFIBase):
-    """Instruction to scan a directory for files matching an MFN pattern."""
+    """Instruction to scan a directory for files matching an MFN pattern.
+    
+    Two modes:
+      - Directory scan: source (dir) + patterns (mask). patterns override MFN default.
+      - File list:      files (explicit paths). source and patterns ignored.
+    """
     action:   str = "scan_directory"
     mfn_id:   str = ""
-    source:   str = ""
-    patterns: list = field(default_factory=list)  # e.g. ['busCard', 'BusCard', 'busCardish']
+    source:   str = ""                            # directory to scan
+    patterns: list = field(default_factory=list)  # mask override; MFN default if empty
+    files:    list = field(default_factory=list)  # explicit file paths; skips directory scan
     
 @dataclass
 class DiscoveryResultMFI(MFIBase):

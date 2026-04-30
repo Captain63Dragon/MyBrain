@@ -608,6 +608,18 @@ function createRecordPanel(record, rootpath, cnt, mfn) {
         optionalGroups[prop] = addPropertyField(prop, meta, isEmpty);
     }
 
+    // --- Blur listener: update sub-tab label as you type display_name_field ---
+    const displayField = mfn?.display_name_field || null;
+    if (displayField) {
+        const displayInput = recordForm.querySelector(`[name="${displayField}${cnt}"]`);
+        if (displayInput) {
+            displayInput.addEventListener('blur', () => {
+                const btn = document.querySelector(`.sub-tab-btn[data-record="record${cnt}"]`);
+                if (btn && displayInput.value) btn.textContent = displayInput.value;
+            });
+        }
+    }
+
     // --- Add field picker ---
     const picker = createAddFieldPicker(optionalGroups, mfn);
     recordForm.appendChild(picker);
@@ -706,6 +718,25 @@ function createRecordPanel(record, rootpath, cnt, mfn) {
             saveBtn.disabled = true;
             resetBtn.disabled = true;
             updateBulkActions();
+            // Update table row cells from saved form values
+            if (tableMapping) {
+                Object.entries(tableMapping).forEach(([className, propName]) => {
+                    const td = row.querySelector(`td.${className}`);
+                    if (!td) return;
+                    const el = recordForm.querySelector(`[name="${propName}${cnt}"]`);
+                    if (!el || className === 'filepath') return;
+                    const val = el.value || '';
+                    td.textContent = className === 'description' ? truncate(val, 47) : val;
+                    td.title = val;
+                });
+            }
+            // Update sub-tab label
+            const displayField = mfn?.display_name_field || null;
+            if (displayField) {
+                const dispEl = recordForm.querySelector(`[name="${displayField}${cnt}"]`);
+                const btn = document.querySelector(`.sub-tab-btn[data-record="record${cnt}"]`);
+                if (btn && dispEl?.value) btn.textContent = dispEl.value;
+            }
         } else {
             console.error('Save failed for', nodeId, result);
         }

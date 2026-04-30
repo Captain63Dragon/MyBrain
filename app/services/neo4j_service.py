@@ -59,6 +59,17 @@ def get_session():
     return neo4j.get_session()
 
 
+def resolve_actor(name: str) -> tuple[str, dict]:
+    """Resolve an actor name to (label, match_dict) for graph node operations.
+    'user' → ('User', {'handle': 'owner'})
+    any other string → ('Persona', {'name': name})
+    Used by bots to wire relationships to the correct node type.
+    """
+    if name == 'user':
+        return 'User', {'handle': 'owner'}
+    return 'Persona', {'name': name}
+
+
 def ensure_mfn_constraint(session):
     """Ensure the MFN-id uniqueness constraint exists on MetaFileNode label"""
     try:
@@ -923,3 +934,51 @@ def ping_neo4j():
             return str(result['time'])
     except Exception:
         return None
+    
+def get_todos_for_sync(since=None):
+    """
+    Return todos for Zaudi sync. If since (ISO string) provided, returns only
+    todos created after that timestamp. Otherwise returns all active todos.
+    """
+    with neo4j.get_session() as session:
+        if since:
+            result = session.run("""
+                MATCH (t:Todo)
+                WHERE t.created > datetime($since)
+                RETURN t.`todo-id`   AS todo_id,
+                       t.description AS description,
+                       t.priority    AS priority,
+                       t.status      AS status,
+                       t.friction    AS friction,
+                       t.created     AS created,
+                       t.due         AS due,
+                       t.owner       AS owner,
+                       t.source_pin  AS source_pin,
+                       t.notes       AS notes
+                ORDER BY t.created ASC
+            """, since=since)
+        else:
+            result = session.run("""
+                MATCH (t:Todo)
+                WHERE t.status IN ['open','pending','in_progress']
+                RETURN t.`todo-id`   AS todo_id,
+                       t.description AS description,
+                       t.priority    AS priority,
+                       t.status      AS status,
+                       t.friction    AS friction,
+                       t.created     AS created,
+                       t.due         AS due,
+                       t.owner       AS owner,
+                       t.source_pin  AS source_pin,
+                       t.notes       AS notes
+                ORDER BY t.created ASC
+            """)
+        todos = []
+        for record in result:
+            t = dict(record)
+            if t.get('created'):
+                t['created'] = str(t['created'])
+            if t.get('due'):
+                t['due'] = str(t['due'])
+            todos.append(t)
+        return todos

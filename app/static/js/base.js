@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
 
             // Panels in the page
-            const panels = ['content-banner', 'content-review', 'content-search'];
+            const panels = ['content-banner', 'content-review', 'content-search', 'content-todos'];
             panels.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // initialize tabs for the included fragment
             } else if (serviceKey === 'search_database') {
                 const el = document.getElementById('content-search');
+                if (el) el.style.display = 'block';
+            } else if (serviceKey === 'todos') {
+                const el = document.getElementById('content-todos');
                 if (el) el.style.display = 'block';
             } else {
                 const el = document.getElementById('content-banner');

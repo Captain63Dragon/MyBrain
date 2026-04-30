@@ -17,4 +17,4 @@ ENV FLASK_APP=run.py
 
 # Run the application
 # CMD ["flask", "run", "--host=0.0.0.0"]
-CMD ["flask", "run", "--host=0.0.0.0", "--with-threads"]
+CMD ["sh", "-c", "cp /tmp/.netrc-src /root/.netrc && chmod 600 /root/.netrc && flask run --host=0.0.0.0 --with-threads"]

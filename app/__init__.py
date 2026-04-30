@@ -9,6 +9,10 @@ SERVICES = {
     'review_filenode': {
         'title': 'Review FileNode',
         'template': 'review_filenode.html'
+    },
+    'todos': {
+        'title': 'Todos',
+        'template': 'todos.html'
     }
 }
 
@@ -20,7 +24,11 @@ def create_app():
     from app.routes.r2hodo_routes import r2hodo_bp
     from app.routes.base_routes import base_bp
     from app.routes.bots_routes import bots_bp
+    from app.routes.todos_routes import todos_bp
+    from app.routes.filenode_routes import filenode_bp
+    from app.routes.email_routes import email_bp
     from app.services.mfi_broker import start_mfi_broker
+    from app.scripts.mail_ingestor import start_mail_ingestor
     # from app.routes.timeline_routes import timeline_bp
     app = Flask(__name__)
     app.config.from_object('config.Config')
@@ -37,8 +45,12 @@ def create_app():
         app.register_blueprint(r2hodo_bp)
         app.register_blueprint(base_bp)
         app.register_blueprint(bots_bp)
+        app.register_blueprint(todos_bp)
+        app.register_blueprint(filenode_bp)
+        app.register_blueprint(email_bp)
         # app.register_blueprint(timeline_bp)
         
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        start_mfi_broker()        
+        start_mfi_broker()
+        start_mail_ingestor(app)
     return app

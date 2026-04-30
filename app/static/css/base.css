@@ -263,23 +263,36 @@ tr.row-saved {
   .swatch-success   { background: #e8f5e9; border-left-color: #43a047; }
 
 .description {
-    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .filepath {
-    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .node {
-    max-width: 150px;
     word-break: break-word;
     overflow-wrap: anywhere;
+}
+
+.phone, .cell {
+    width: 14ch;
+    min-width: 12ch;
+    max-width: 20ch;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.contact, .category {
+    width: 25ch;
+    min-width: 25ch;
+    max-width: 25ch;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .select-col {
@@ -539,7 +552,5 @@ select:disabled {
 }
 
 .content {
-    max-width: 1200px;
-    margin: 0 auto;
     padding: 40px 20px;
 }

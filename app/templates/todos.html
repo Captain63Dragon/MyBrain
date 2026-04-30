@@ -1,0 +1,173 @@
+<div class="content" id="right-content" style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h1 style="margin-bottom: 10px;">Todos</h1>
+    <p style="color: #7f8c8d; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #ecf0f1;">
+        Active work queue
+    </p>
+
+    <div class="bulk-actions">
+        <label style="font-weight: 500;">Status</label>
+        <select id="todo-status-filter">
+            <option value="all">All</option>
+            <option value="active" selected>Active</option>
+            <option value="open">Open</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="deferred">Deferred</option>
+            <option value="completed">Completed</option>
+            <option value="closed">Closed</option>
+        </select>
+        <label style="font-weight: 500;">Priority</label>
+        <select id="todo-priority-filter">
+            <option value="">All</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+        </select>
+        <label style="font-weight: 500;">Owner</label>
+        <select id="todo-owner-filter">
+            <option value="user" selected>user</option>
+        </select>
+        <button id="todo-load-btn" class="btn btn-primary">Load</button>
+        <button id="todo-new-btn" class="btn btn-secondary" style="margin-left: 8px;">+ New Todo</button>
+        <label style="font-weight: 500;">Sort</label>
+        <select id="todo-sort-select">
+            <option value="smart" selected>Smart</option>
+            <option value="due">Due Date</option>
+            <option value="alpha">Alpha</option>
+            <!-- Score policies injected here by JS -->
+        </select>
+        <span id="todo-count" style="color: #888; font-size: 13px;"></span>
+    </div>
+
+    <div id="todo-table-wrap" style="display: none;">
+        <table id="todo-table">
+            <thead>
+                <tr>
+                    <th class="select-col"></th>
+                    <th>Description</th>
+                    <th style="width: 80px;">Owner</th>
+                    <th style="width: 80px;">Priority</th>
+                    <th style="width: 100px;">Status</th>
+                    <th style="width: 130px;">Friction</th>
+                    <th style="width: 100px;">Due</th>
+                    <th style="width: 60px;">Score</th>
+                </tr>
+            </thead>
+            <tbody id="todo-table-body"></tbody>
+        </table>
+    </div>
+
+    <div id="todo-edit-panel" style="display: none; margin-top: 24px; border: 2px solid #ddd; border-radius: 6px; padding: 20px; background: #f9f9f9;">
+        <h3 id="todo-edit-title" style="margin-bottom: 16px; color: #555; font-size: 13px; font-family: monospace;"></h3>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea id="todo-edit-description" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 3px; min-height: 60px; resize: vertical; font-family: inherit;"></textarea>
+        </div>
+        <div style="display: flex; gap: 16px;">
+            <div class="form-group" style="flex: 1;">
+                <label>Status</label>
+                <select id="todo-edit-status" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 3px;">
+                    <option value="open">open</option>
+                    <option value="pending">pending</option>
+                    <option value="in_progress">in_progress</option>
+                    <option value="deferred">deferred</option>
+                    <option value="completed">completed</option>
+                    <option value="closed">closed</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Priority</label>
+                <select id="todo-edit-priority" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 3px;">
+                    <option value="high">high</option>
+                    <option value="medium">medium</option>
+                    <option value="low">low</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Friction</label>
+                <select id="todo-edit-friction" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 3px;">
+                    <option value="">none</option>
+                    <option value="phone-call">phone-call</option>
+                    <option value="difficult">difficult</option>
+                    <option value="uncertain">uncertain</option>
+                    <option value="boring">boring</option>
+                    <option value="waiting-on-other">waiting-on-other</option>
+                    <option value="hated-meeting">hated-meeting</option>
+                    <option value="procrastination">procrastination</option>
+                    <option value="interviews">interviews</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Owner</label>
+                <select id="todo-edit-owner" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 3px;">
+                    <option value="user">user</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Due</label>
+                <input type="date" id="todo-edit-due" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 3px;">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea id="todo-edit-notes" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 3px; min-height: 60px; resize: vertical; font-family: inherit;"></textarea>
+        </div>
+        <div class="form-actions">
+            <button id="todo-save-btn" class="btn btn-primary" disabled>Save Changes</button>
+            <button id="todo-cancel-btn" class="btn btn-secondary">Cancel</button>
+            <span id="todo-sub-check-wrap" style="display: none; margin-left: 16px; align-items: center; gap: 6px;">
+                <input type="checkbox" id="todo-sub-check">
+                <label for="todo-sub-check" style="font-size: 13px; color: #555; cursor: pointer;">Create sub-todo</label>
+            </span>
+            <span id="todo-save-msg" style="margin-left: 12px; font-size: 13px;"></span>
+        </div>
+    </div>
+
+    <div id="todo-sub-panel" style="display: none; margin-top: 12px; border: 2px solid #aed6f1; border-radius: 6px; padding: 20px; background: #eaf4fb;">
+        <h3 style="margin-bottom: 16px; color: #2980b9; font-size: 13px; font-family: monospace;">&#8627; Sub-todo of <span id="todo-sub-parent-label"></span></h3>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea id="todo-sub-description" style="width: 100%; padding: 8px; border: 1px solid #aed6f1; border-radius: 3px; min-height: 60px; resize: vertical; font-family: inherit;"></textarea>
+        </div>
+        <div style="display: flex; gap: 16px;">
+            <div class="form-group" style="flex: 1;">
+                <label>Priority</label>
+                <select id="todo-sub-priority" style="width: 100%; padding: 8px; border: 1px solid #aed6f1; border-radius: 3px;">
+                    <option value="high">high</option>
+                    <option value="medium" selected>medium</option>
+                    <option value="low">low</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Friction</label>
+                <select id="todo-sub-friction" style="width: 100%; padding: 8px; border: 1px solid #aed6f1; border-radius: 3px;">
+                    <option value="">none</option>
+                    <option value="phone-call">phone-call</option>
+                    <option value="difficult">difficult</option>
+                    <option value="uncertain">uncertain</option>
+                    <option value="boring">boring</option>
+                    <option value="waiting-on-other">waiting-on-other</option>
+                    <option value="hated-meeting">hated-meeting</option>
+                    <option value="procrastination">procrastination</option>
+                    <option value="interviews">interviews</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Owner</label>
+                <select id="todo-sub-owner" style="width: 100%; padding: 8px; border: 1px solid #aed6f1; border-radius: 3px;">
+                    <option value="user">User</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Due</label>
+                <input type="date" id="todo-sub-due" style="width: 100%; padding: 8px; border: 1px solid #aed6f1; border-radius: 3px;">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea id="todo-sub-notes" style="width: 100%; padding: 8px; border: 1px solid #aed6f1; border-radius: 3px; min-height: 60px; resize: vertical; font-family: inherit;"></textarea>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/todos.js') }}"></script>
+</div>
