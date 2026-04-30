@@ -1,0 +1,64 @@
+META-FILE-NODE: Pin_20260411
+
+# Identity
+name: "Pin"
+label: "Pin"
+path: "E:\\_Processing\\archive"
+description: "Capture documents produced by Pip or personas — rollups, single pins, todos, ideas, session notes — that live on disk and need a lifecycle."
+purpose: "Pipeline for Pip's output files. Enables discovery, review, graph sync, and archival of pin documents across all types."
+
+# UI routing and display configuration
+route_prefix: "pin"
+display_name_field: "descriptor"
+table_columns:
+  - node
+  - pin_type
+  - source_persona
+  - date
+  - descriptor
+  - filepath
+
+# System fields — rendered readonly, never in add-field picker
+system_properties:
+  - FILE-NODE-id
+  - filepath
+
+# Editable properties — render order is form order
+core_properties:
+  descriptor:
+    description: "The slug segment after the type in the filename — human-readable summary of content"
+  pin_type:
+    label: "Pin Type"
+    description: "rollup | todo | idea | receipt | note | session_marker | recommend"
+  date:
+    description: "Date from filename or frontmatter (YYYY_MMDD)"
+  source_persona:
+    label: "Source Persona"
+    description: "Persona that produced the file — Pip, Vera, Rex, etc."
+
+optional_properties:
+  attention:
+    description: "Persona(s) this pin is addressed to"
+  session_id:
+    label: "Session ID"
+    description: "Links to session marker if present"
+  notes:
+    textarea: true
+    description: "Additional context or processing notes"
+
+# LEGACY: file processing pipeline — not used by review UI
+user_review_required: true
+relocatable: true
+review_priority: 5
+patterns: '[
+  {"pattern_type": "filename_contains", "pattern_value": "pin",       "confidence": 0.95},
+  {"pattern_type": "filename_contains", "pattern_value": "todo",      "confidence": 0.90},
+  {"pattern_type": "filename_contains", "pattern_value": "idea",      "confidence": 0.90},
+  {"pattern_type": "filename_contains", "pattern_value": "recommend", "confidence": 0.90},
+  {"pattern_type": "file_extension",    "pattern_value": ".yaml",     "confidence": 0.80},
+  {"pattern_type": "file_extension",    "pattern_value": ".md",       "confidence": 0.70},
+  {"pattern_type": "file_extension",    "pattern_value": ".txt",      "confidence": 0.60}
+]'
+remove_source:
+  value: ask
+  allowed: [move, ask, dup]
