@@ -1,24 +1,35 @@
 """
-mail_ingestor — Flask-side background thread.
-Polls mybrain@zaudi.com (DreamHost IMAP) for UNSEEN messages.
-For each message:
+external_data_fetch - Flask-side background thread.
+Polls external temporary storage sources and pulls data into MyBrain.
+
+Current intake pipes:
+  1. mybrain@zaudi.com (DreamHost IMAP) - tagged emails → vera-queue
+  2. Todos sync to Zaudi via api_service
+  3. TOPS sync (food_log + food_library) via tops_service
+
+For each IMAP message:
   1. Write raw .eml to email/archive-raw/  (source of truth)
   2. Copy to Processed/Vera on IMAP server
   3. Flag Deleted in INBOX + Expunge
-  4. Route — tagged emails only, via mail_service
+  4. Route - tagged emails only, via mail_service
 
 After poll completes (regardless of email count):
   5. Sync todos to Zaudi via api_service.run_sync_cycle(auto=True)
-     auto=True applies the 1hr push guard — dirty flag overrides.
+  6. Sync TOPS via tops_service.run_sync_cycle(auto=True)
 
 Credentials: ~/.netrc (machine imap.dreamhost.com)
 Paths: MFI_PATH/email/archive-raw/ and MFI_PATH/email/vera-queue/
 """
 import hashlib
 import imaplib
+import json
+import logging
 import netrc
+import os
 import time
 import threading
+from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from app.shared.mfi_shared import email_archive_path, email_queue_path
@@ -29,13 +40,53 @@ IMAP_INBOX    = 'INBOX'
 IMAP_DEST     = 'INBOX.Processed.Vera'
 POLL_INTERVAL = 300
 
-# App instance — set by start_mail_ingestor(), used for app context in thread
 _app = None
+
+# ── Logger ────────────────────────────────────────────────────────────────────
+_logger = None
+
+def _get_logger():
+    global _logger
+    if _logger is not None:
+        return _logger
+
+    log_path = os.path.join('app', 'logs', 'fetch.log')
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+    _logger = logging.getLogger('external_data_fetch')
+    _logger.setLevel(logging.INFO)
+
+    if not _logger.handlers:
+        handler = RotatingFileHandler(
+            log_path,
+            maxBytes=1_000_000,
+            backupCount=5,
+            encoding='utf-8'
+        )
+        handler.setFormatter(logging.Formatter('%(message)s'))
+        _logger.addHandler(handler)
+
+    return _logger
+
+
+def _log(event: str, detail: str = '', level: str = 'info'):
+    entry = {
+        'ts':    datetime.now(timezone.utc).isoformat(),
+        'event': event,
+    }
+    if detail:
+        entry['detail'] = detail
+
+    line = json.dumps(entry)
+    logger = _get_logger()
+    if level == 'error':
+        logger.error(line)
+    else:
+        logger.info(line)
 
 
 # ── Path helpers ──────────────────────────────────────────────────────────────
 def _ensure_paths():
-    """Create archive-raw and vera-queue root. Subfolders created dynamically by mail_service."""
     email_archive_path().mkdir(parents=True, exist_ok=True)
     email_queue_path().mkdir(parents=True, exist_ok=True)
 
@@ -54,18 +105,16 @@ def _get_credentials():
 
 # ── IMAP helpers ──────────────────────────────────────────────────────────────
 def _ensure_dest_folder(mail: imaplib.IMAP4_SSL):
-    """Create Processed/Vera on server if it doesn't exist."""
     status, folders = mail.list()
     if status != 'OK':
         return
     exists = any(IMAP_DEST.encode() in (f or b'') for f in folders)
     if not exists:
         mail.create(IMAP_DEST)
-        print(f"[mail_ingestor] created IMAP folder: {IMAP_DEST}")
+        _log('imap.folder.created', IMAP_DEST)
 
 
 def _copy_flag_expunge(mail: imaplib.IMAP4_SSL, uid: bytes):
-    """Copy to Processed/Vera, flag Deleted in INBOX, expunge."""
     status, result = mail.uid('copy', uid, IMAP_DEST)
     if status != 'OK':
         raise RuntimeError(f"COPY failed for UID {uid.decode()}: {result}")
@@ -74,9 +123,10 @@ def _copy_flag_expunge(mail: imaplib.IMAP4_SSL, uid: bytes):
 
 
 # ── Main poll ─────────────────────────────────────────────────────────────────
-def _poll():
-    """One IMAP session: fetch UNSEEN, archive, move."""
+def _poll() -> int:
+    """One IMAP session. Returns count of messages processed."""
     username, password = _get_credentials()
+    processed = 0
     try:
         with imaplib.IMAP4_SSL(HOST) as mail:
             mail.login(username, password)
@@ -85,89 +135,104 @@ def _poll():
 
             status, search_data = mail.uid('search', None, 'UNSEEN')
             if status != 'OK':
-                print("[mail_ingestor] SEARCH failed")
-                return
+                _log('imap.search.failed', level='error')
+                return 0
 
             uids = search_data[0].split()
             if not uids:
-                return
+                return 0
 
-            print(f"[mail_ingestor] {len(uids)} UNSEEN message(s)")
+            _log('imap.unseen', f"{len(uids)} message(s)")
 
             for uid in uids:
                 uid_str = uid.decode()
                 try:
                     status, fetch_data = mail.uid('fetch', uid, '(RFC822)')
                     if status != 'OK' or not fetch_data or fetch_data[0] is None:
-                        print(f"[mail_ingestor] fetch failed: UID {uid_str}")
+                        _log('imap.fetch.failed', f"UID {uid_str}", level='error')
                         continue
 
                     raw_bytes = fetch_data[0][1]
+                    uid_hash  = hashlib.md5(raw_bytes).hexdigest()
+                    eml_path  = email_archive_path() / f"{uid_hash}.eml"
 
-                    # 1. Local write — source of truth
-                    uid_hash = hashlib.md5(raw_bytes).hexdigest()
-                    eml_path = email_archive_path() / f"{uid_hash}.eml"
                     if eml_path.exists():
-                        print(f"[mail_ingestor] duplicate, skipping: {uid_hash}.eml")
+                        _log('imap.duplicate.skipped', uid_hash)
                         _copy_flag_expunge(mail, uid)
                         continue
 
                     eml_path.write_bytes(raw_bytes)
-                    print(f"[mail_ingestor] archived: {uid_hash}.eml")
-
-                    # 2. Server-side move (only after local write confirmed)
                     _copy_flag_expunge(mail, uid)
 
-                    # 3. Route — tagged emails only
                     from app.services.mail_service import route
                     route(raw_bytes, uid_hash)
 
+                    _log('imap.message.processed', uid_hash)
+                    processed += 1
+
                 except Exception as e:
-                    print(f"[mail_ingestor] ERROR processing UID {uid_str}: {e}")
+                    _log('imap.message.error', f"UID {uid_str}: {e}", level='error')
 
     except Exception as e:
-        print(f"[mail_ingestor] connection error: {e}")
+        _log('imap.connection.error', str(e), level='error')
+
+    return processed
 
 
 # ── Thread ────────────────────────────────────────────────────────────────────
-def _mail_ingestor_loop():
+def _fetch_loop():
     _ensure_paths()
-    print("[mail_ingestor] started")
+    _log('fetch.started')
+
     while True:
         with _app.app_context():
-            try:
-                _poll()
-            except Exception as e:
-                print(f"[mail_ingestor] loop error: {e}")
+            _log('cycle.start')
 
-            # Sync todos to Zaudi after every poll — auto=True applies 1hr guard
+            # IMAP
+            try:
+                count = _poll()
+                if count:
+                    _log('cycle.imap', f"{count} processed")
+            except Exception as e:
+                _log('cycle.imap.error', str(e), level='error')
+
+            # Todos sync
             try:
                 from app.services.api_service import run_sync_cycle
-                result = run_sync_cycle(reason='triggered by mail_ingestor poll', auto=True)
+                result = run_sync_cycle(reason='fetch cycle', auto=True)
                 if result.get('push_skipped'):
-                    print(f"[mail_ingestor] sync: ok — push deferred")
+                    _log('cycle.todos', 'deferred')
                 else:
-                    print(f"[mail_ingestor] sync ok | {result}")
+                    _log('cycle.todos', f"pushed={result.get('committed', 0)} fresh={result.get('fresh_count', 0)} stranded={result.get('stranded_count', 0)} failures={result.get('failure_count', 0)} status={result.get('status')}")
             except Exception as e:
-                print(f"[mail_ingestor] sync error: {e}")
+                _log('cycle.todos.error', str(e), level='error')
 
-            # Sync TOPS (food_log + food_library) — same auto=True 1hr guard
+            # TOPS sync
             try:
                 from app.services.tops_service import run_sync_cycle as tops_sync
-                tresult = tops_sync(reason='triggered by mail_ingestor poll', auto=True)
+                tresult = tops_sync(reason='fetch cycle', auto=True)
                 if tresult.get('push_skipped'):
-                    print(f"[mail_ingestor] tops sync: ok — push deferred")
+                    _log('cycle.tops', "deferred")
                 else:
-                    print(f"[mail_ingestor] tops sync ok | {tresult}")
+                    log_push = tresult.get('push_log', {})
+                    lib_push = tresult.get('push_lib', {})
+                    log_pull = tresult.get('pull_log', {})
+                    lib_pull = tresult.get('pull_lib', {})
+                    _log('cycle.tops',
+                         f"log pushed={log_push.get('pushed', 0)} lib pushed={lib_push.get('pushed', 0)} "
+                         f"log pulled_new={log_pull.get('new', 0)} lib pulled_new={lib_pull.get('new', 0)} "
+                         f"status={tresult.get('status')}")
             except Exception as e:
-                print(f"[mail_ingestor] tops sync error: {e}")
+                _log('cycle.tops.error', str(e), level='error')
+
+            _log('cycle.end', datetime.now(timezone.utc).isoformat())
 
         time.sleep(POLL_INTERVAL)
 
 
-def start_mail_ingestor(app):
+def start_external_data_fetch(app):
     global _app
     _app = app
-    thread = threading.Thread(target=_mail_ingestor_loop, daemon=True, name='mail_ingestor')
+    thread = threading.Thread(target=_fetch_loop, daemon=True, name='external_data_fetch')
     thread.start()
-    print("[mail_ingestor] thread launched")
+    _log('fetch.thread.launched')

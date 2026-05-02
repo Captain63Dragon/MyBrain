@@ -1,11 +1,11 @@
 """
-scoring_service.py — Policy-driven todo scorer.
+scoring_service.py - Policy-driven todo scorer.
 User-facing infrastructure. Not persona-owned.
 
 score_todo(todo, policy, now) → (score, nudge)
 
 Policy weights read from (:ScoringPolicy) node in Neo4j.
-Caller decides what to score — no filtering here.
+Caller decides what to score - no filtering here.
 
 Updated: 2026-04-20
 """
@@ -43,8 +43,8 @@ def score_todo(todo: dict, policy: dict, now: datetime) -> tuple[float, bool]:
 
     Returns:
         (score, nudge)
-        score — float, higher = more urgent
-        nudge — True if friction item has aged past friction_nudge_days
+        score - float, higher = more urgent
+        nudge - True if friction item has aged past friction_nudge_days
     """
     priority = (todo.get('priority') or 'low').lower()
 

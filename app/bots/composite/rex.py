@@ -109,7 +109,7 @@ def _py_type_to_json_schema(type_hint: str) -> dict:
     Convert a Python type annotation string to a JSON Schema property object.
 
     Handles simple types, Optional/None unions, and basic generics (list[str]).
-    Returns {} for ambiguous unions (e.g. str | list | None) — unconstrained
+    Returns {} for ambiguous unions (e.g. str | list | None) - unconstrained
     is better than wrong.
 
     Internal params (session, log_call) should be stripped before calling this;
@@ -119,13 +119,13 @@ def _py_type_to_json_schema(type_hint: str) -> dict:
     # status: 'str | list | None' = ... )
     type_hint = type_hint.strip().strip("'\"")
 
-    # Split union, drop None — we don't use JSON Schema nullable in this system
+    # Split union, drop None - we don't use JSON Schema nullable in this system
     parts = [p.strip() for p in type_hint.split('|') if p.strip().lower() != 'none']
 
     if not parts:
         return {}
 
-    # Ambiguous union (more than one non-None type) — leave unconstrained
+    # Ambiguous union (more than one non-None type) - leave unconstrained
     if len(parts) > 1:
         return {}
 
@@ -145,7 +145,7 @@ def _py_type_to_json_schema(type_hint: str) -> dict:
 
     json_type = TYPE_MAP.get(base)
     if json_type is None:
-        return {}  # 'any' or unknown — unconstrained
+        return {}  # 'any' or unknown - unconstrained
 
     if base == 'list' and '[' in raw:
         inner_raw = raw[raw.index('[') + 1: raw.rindex(']')].strip()
@@ -156,7 +156,7 @@ def _py_type_to_json_schema(type_hint: str) -> dict:
     return {'type': json_type}
 
 
-# Params that are infrastructure — never exposed in the MCP tool schema.
+# Params that are infrastructure - never exposed in the MCP tool schema.
 _INTERNAL_PARAMS = {'session', 'log_call'}
 
 
@@ -170,7 +170,7 @@ def _parse_bot_file(filepath: Path, bots_dir: Path) -> list[dict]:
     Rules:
     - All params captured (not just those with defaults).
     - Params without defaults are added to "required".
-    - session and log_call are excluded — internal infrastructure.
+    - session and log_call are excluded - internal infrastructure.
     - Python type annotations are mapped to JSON Schema types.
     - Ambiguous unions (e.g. str | list | None) become {} (unconstrained).
 
@@ -208,7 +208,7 @@ def _parse_bot_file(filepath: Path, bots_dir: Path) -> list[dict]:
         params_str = match.group(2)
         returns_str = match.group(3).strip()
 
-        # Extract docstring — look for "Use case:" line
+        # Extract docstring - look for "Use case:" line
         docstring_pattern = rf'def\s+{re.escape(function_name)}.*?"""(.*?)"""'
         doc_match = re.search(docstring_pattern, content, re.DOTALL)
 

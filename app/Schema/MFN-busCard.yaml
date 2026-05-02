@@ -19,12 +19,12 @@ table_columns:
   - description
   - filepath
 
-# System fields — rendered readonly, never in add-field picker
+# System fields - rendered readonly, never in add-field picker
 system_properties:
   - FILE-NODE-id
   - filepath
 
-# Editable properties — render order is form order
+# Editable properties - render order is form order
 core_properties:
   description:
     textarea: true
@@ -48,7 +48,7 @@ optional_properties:
   cell:
     description: "Is texting appropriate? Mobile opportunities?"
   fax:
-    description: "Fax number. Not likely needed — just for completeness."
+    description: "Fax number. Not likely needed - just for completeness."
   email:
     description: "Company or individual's formal contact"
   company:
@@ -64,7 +64,7 @@ optional_properties:
     textarea: true
     description: "Recommending person or body"
 
-# LEGACY: file processing pipeline — not used by review UI
+# LEGACY: file processing pipeline - not used by review UI
 user_review_required: true
 relocatable: true
 review_priority: 5

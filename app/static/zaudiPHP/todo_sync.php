@@ -4,12 +4,12 @@
  * Two-action sync endpoint between Zaudi MySQL and Neo4j (via Flask).
  *
  * Actions:
- *   get_unprocessed — begin lock, claim fresh rows, return fresh + stranded
- *   commit          — bulk upsert todos_new, drop processing, rename to live
+ *   get_unprocessed - begin lock, claim fresh rows, return fresh + stranded
+ *   commit          - bulk upsert todos_new, drop processing, rename to live
  *
  * Auth: X-API-Key header (via auth.php)
  * Content-Type: application/vnd.collection+json
- * Updated: 2026-04-27 — orphan recovery fix + empty payload guard
+ * Updated: 2026-04-27 - orphan recovery fix + empty payload guard
  */
 
 header('Content-Type: application/vnd.collection+json');
@@ -118,14 +118,14 @@ try {
         }
         create_todos_new($db);
 
-        // Crash victims — already claimed, never completed
+        // Crash victims - already claimed, never completed
         $stranded_stmt = $db->query(
             "SELECT * FROM todos_processing
              WHERE processing IS NOT NULL AND synced_at IS NULL"
         );
         $stranded_rows = $stranded_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Fresh — not yet claimed
+        // Fresh - not yet claimed
         $fresh_stmt = $db->query(
             "SELECT * FROM todos_processing
              WHERE processing IS NULL AND synced_at IS NULL"
@@ -175,7 +175,7 @@ try {
         }
 
         if (!table_exists($db, 'todos_processing')) {
-            respond_error('No active sync session — todos_processing not found', 409);
+            respond_error('No active sync session - todos_processing not found', 409);
         }
 
         $upserted = 0;
@@ -217,9 +217,9 @@ try {
             }
         }
 
-        // Empty payload — no new todos from Neo4j but still must complete the rename.
+        // Empty payload - no new todos from Neo4j but still must complete the rename.
         // Dropping todos_new and renaming todos_processing back preserves the live table.
-        // Do NOT abort here — the lock must always be released.
+        // Do NOT abort here - the lock must always be released.
         $count = (int) $db->query("SELECT COUNT(*) FROM todos_new")->fetchColumn();
         if ($count === 0) {
             $db->exec("DROP TABLE todos_new");
@@ -228,7 +228,7 @@ try {
                 'meta' => [
                     ['name' => 'status',   'value' => 'ok'],
                     ['name' => 'upserted', 'value' => 0],
-                    ['name' => 'note',     'value' => 'empty payload — lock released, table restored'],
+                    ['name' => 'note',     'value' => 'empty payload - lock released, table restored'],
                     ['name' => 'time',     'value' => date('c')],
                 ],
             ]);

@@ -225,7 +225,7 @@ try {
         $body   = json_decode(file_get_contents('php://input'), true) ?? [];
         $fields = template_to_fields($body);
 
-        // _method override — treat as PUT
+        // _method override - treat as PUT
         $override = strtoupper($fields['_method'] ?? '');
         if ($override === 'PUT') {
             $resolvedId = $todoId ?? ($fields['todo_id'] ?? null);
@@ -235,7 +235,7 @@ try {
             exit;
         }
 
-        // Normal POST — create
+        // Normal POST - create
         $description = trim($fields['description'] ?? '');
         if (!$description) send_error(400, 'description is required');
 

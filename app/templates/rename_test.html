@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Rename/Move — MyBrain</title>
+<title>Rename/Move - MyBrain</title>
 <link rel="stylesheet" href="/app/static/css/base.css">
 </head>
 <body>
@@ -52,7 +52,7 @@
 </div>
 
 <script>
-// Demo data — mix of states to show all UI cases
+// Demo data - mix of states to show all UI cases
 const NODES = [
   { id: 'buscard-test-alpha_20260101',   contact: null,    path: 'C:\\MyBrain-test',         file: '2026_0101-busCard-test-alpha.pdf',   state: 'clean' },
   { id: 'buscard-test-beta_20260101',    contact: null,    path: 'C:\\MyBrain-test-archive', file: '2026_0101-busCard-test-beta.pdf',    state: 'clean' },
@@ -71,7 +71,7 @@ function buildTable() {
     tr.dataset.rowstate = 'clean';
     tr.innerHTML = `
     <td class="col-id node" title="${node.id}">${node.id}</td>
-    <td class="col-contact">${node.contact || '<span class="null-val">—</span>'}</td>
+    <td class="col-contact">${node.contact || '<span class="null-val">-</span>'}</td>
     <td class="col-path">
       <input class="editable" id="path-${i}" data-field="path" data-orig="${node.path}" value="${node.path}" oninput="onEdit(this,${i})" />
       <span class="flag-msg" id="flag-${i}"></span>
@@ -161,7 +161,7 @@ function updateDirtyCount() {
   document.getElementById('dirtyCount').textContent = count;
 }
 
-// Demo: simulate validation pass — injects one suggested, one flagged
+// Demo: simulate validation pass - injects one suggested, one flagged
 function validateAndDispatch() {
   const dirtyRows = [];
   document.querySelectorAll('tr.dirty').forEach(tr => {
@@ -170,18 +170,18 @@ function validateAndDispatch() {
 
   if (!dirtyRows.length) { alert('Nothing staged.'); return; }
 
-  // Simulate validation — first dirty row gets a suggestion, rest dispatch
+  // Simulate validation - first dirty row gets a suggestion, rest dispatch
   let first = true;
   dirtyRows.forEach(i => {
     if (first) {
-      // Simulate: file exists at target — inject suggested filename
+      // Simulate: file exists at target - inject suggested filename
       const fileInp = document.getElementById(`file-${i}`);
       const orig = fileInp.value.replace('.pdf','');
       const suggested = orig + '_01.pdf';
       fileInp.value = suggested;
       fileInp.classList.remove('dirty');
       fileInp.classList.add('suggested');
-      setFlag(i, 'File exists at target — suggested rename shown', 'suggested');
+      setFlag(i, 'File exists at target - suggested rename shown', 'suggested');
       setActions(i, 'accept');
       first = false;
     } else {

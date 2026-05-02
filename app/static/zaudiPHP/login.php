@@ -1,5 +1,5 @@
 <?php
-// login.php — Session login for browser-facing MyBrain pages.
+// login.php - Session login for browser-facing MyBrain pages.
 // Validates password against MYBRAIN_PASSWORD_HASH in config.php.
 // On success: sets $_SESSION['authed'] = true, redirects to return URL or /user.
 

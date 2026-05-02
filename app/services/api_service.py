@@ -1,12 +1,12 @@
 """
-api_service.py — External API client layer.
+api_service.py - External API client layer.
 Handles all communication with api.zaudi.com.
 
 Sync cycle (two calls to todo_sync.php):
-  1. get_unprocessed_todos() — begin lock, claim fresh rows, return fresh + stranded
+  1. get_unprocessed_todos() - begin lock, claim fresh rows, return fresh + stranded
   2. [Flask] process fresh rows via vera create_todo
-  3. [Flask] get_todos_for_sync() — pull active todos from Neo4j, score, rank, cap
-  4. commit_todos(todos) — bulk upsert into todos_new, drop, rename
+  3. [Flask] get_todos_for_sync() - pull active todos from Neo4j, score, rank, cap
+  4. commit_todos(todos) - bulk upsert into todos_new, drop, rename
 
 Trigger sites:
   - run_sync_cycle() called from /sync/zaudi/todos (manual, auto=False)
@@ -15,11 +15,11 @@ Trigger sites:
 Push guard:
   - auto=True  (ingestor, every 5min):  push if dirty OR last_push > 1hr
   - auto=False (manual/UI, on demand):  push if dirty OR last_push > 5min
-  Dirty flag set by mark_dirty() — called by bots_routes after successful execution.
+  Dirty flag set by mark_dirty() - called by bots_routes after successful execution.
   Cleared after every successful push. None last_push → push fires (safe restart default).
 
 Re-entrancy guard: _sync_in_progress prevents concurrent cycles.
-vera_todos_create does NOT trigger a standalone push during sync — ingest owns it.
+vera_todos_create does NOT trigger a standalone push during sync - ingest owns it.
 """
 
 import requests
@@ -42,9 +42,9 @@ MANUAL_THRESHOLD = timedelta(minutes=5)
 
 
 def mark_dirty():
-    """Signal that a write occurred — next sync cycle should push regardless of threshold.
+    """Signal that a write occurred - next sync cycle should push regardless of threshold.
     Called by bots_routes after any successful bot execution.
-    Direct Neo4j writes (outside /bots/execute) are not detectable here —
+    Direct Neo4j writes (outside /bots/execute) are not detectable here -
     they are caught by whichever threshold fires next.
     """
     global _dirty
@@ -101,7 +101,7 @@ def _parse_response(resp: requests.Response) -> dict:
     return resp.json().get('collection', {})
 
 
-# ── Side A — Ingest (Zaudi → Neo4j) ──────────────────────────────────────────
+# ── Side A - Ingest (Zaudi → Neo4j) ──────────────────────────────────────────
 
 def get_unprocessed_todos() -> tuple[list[dict], list[dict], dict]:
     """
@@ -110,9 +110,9 @@ def get_unprocessed_todos() -> tuple[list[dict], list[dict], dict]:
     Claims fresh rows (processing stamp). Identifies stranded (crash victims).
 
     Returns: (fresh, stranded, meta)
-      fresh    — newly claimed, to be ingested via create_todo
-      stranded — crash victims, go directly to failure list
-      meta     — orphan flag, counts
+      fresh    - newly claimed, to be ingested via create_todo
+      stranded - crash victims, go directly to failure list
+      meta     - orphan flag, counts
     """
     url  = f"{_base_url()}/todo_sync.php"
     resp = requests.post(url, json={'action': 'get_unprocessed'}, headers=_headers(), timeout=15)
@@ -150,7 +150,7 @@ def commit_todos(todos: list[dict]) -> dict:
     return {m['name']: m['value'] for m in meta_raw}
 
 
-# ── Side B — Push (Neo4j → Zaudi) ────────────────────────────────────────────
+# ── Side B - Push (Neo4j → Zaudi) ────────────────────────────────────────────
 
 def get_todos_for_sync(limit: int = 100) -> list[dict]:
     from app.services.scoring_service import get_scoring_policy, score_and_rank
@@ -220,7 +220,7 @@ def run_sync_cycle(reason: str = '', auto: bool = False) -> dict:
         'push_skipped':   False,
     }
 
-    # Push guard — check BEFORE touching any tables.
+    # Push guard - check BEFORE touching any tables.
     # If not dirty and threshold not met, exit completely.
     # The lock must never fire unless we are committed to a full cycle.
     if not _should_push(auto, now):
@@ -230,11 +230,11 @@ def run_sync_cycle(reason: str = '', auto: bool = False) -> dict:
         return {
             'status':           'guarded',
             'push_skipped':     True,
-            'push_skip_reason': f"{label} threshold not met, clean — last push {last.isoformat() if last else 'never'}",
+            'push_skip_reason': f"{label} threshold not met, clean - last push {last.isoformat() if last else 'never'}",
         }
 
     try:
-        # Step 1 — begin lock, claim rows
+        # Step 1 - begin lock, claim rows
         fresh, stranded, meta = get_unprocessed_todos()
         report['fresh_count']    = len(fresh)
         report['stranded_count'] = len(stranded)
@@ -242,7 +242,7 @@ def run_sync_cycle(reason: str = '', auto: bool = False) -> dict:
 
         failures = []
 
-        # Step 2 — ingest fresh rows
+        # Step 2 - ingest fresh rows
         for item in fresh:
             result = create_todo(
                 description = item.get('description'),
@@ -262,7 +262,7 @@ def run_sync_cycle(reason: str = '', auto: bool = False) -> dict:
             else:
                 report['success_count'] += 1
 
-        # Step 3 — stranded rows go straight to failures
+        # Step 3 - stranded rows go straight to failures
         failures.extend(stranded)
         report['failure_count'] += len(stranded)
 
@@ -283,7 +283,7 @@ def run_sync_cycle(reason: str = '', auto: bool = False) -> dict:
                 'synced_at':   None,
             })
 
-        # Step 4 — push guard already passed at top of cycle — always push
+        # Step 4 - push guard already passed at top of cycle - always push
         neo4j_todos = get_todos_for_sync(limit=100)
         payload = neo4j_todos + failure_payload
         _record_push(auto, now)

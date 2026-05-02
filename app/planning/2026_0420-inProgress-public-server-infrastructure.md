@@ -1,6 +1,6 @@
 # Public Server Infrastructure Proposal
 **Date:** 2026-04-13 (updated from 2026-03-24)
-**Status:** In Progress — Foundation Proven  
+**Status:** In Progress - Foundation Proven  
 **Priority:** CRITICAL  
 **Source:** 2026_0326-pin_rollup-various.md | 2026_0413 Claude session  
 
@@ -73,22 +73,22 @@ None - this is foundational infrastructure
 
 ---
 
-## 2026-04-13 — Foundation Proven (Claude session)
+## 2026-04-13 - Foundation Proven (Claude session)
 
 ### What Was Built Today
 
 - **Stack confirmed:** PHP on DreamHost shared hosting at zaudi.com
-- **Database:** MySQL `mybrainlite` at `brain.zaudi.com` — live and accessible via phpMyAdmin
-- **POST endpoint:** `https://zaudi.com/post.php` — receives JSON, writes to `payloads` table ✓
-- **Email pipe:** `https://zaudi.com/mailtest.php` — PHP `mail()` sends to `mybrain@zaudi.com` ✓
+- **Database:** MySQL `mybrainlite` at `brain.zaudi.com` - live and accessible via phpMyAdmin
+- **POST endpoint:** `https://zaudi.com/post.php` - receives JSON, writes to `payloads` table ✓
+- **Email pipe:** `https://zaudi.com/mailtest.php` - PHP `mail()` sends to `mybrain@zaudi.com` ✓
 - **IMAP pickup:** localhost Flask picks up email from mybrain@zaudi.com, processes, moves to Vera folder ✓
 - **Full loop confirmed:** Claude Code → POST → Zaudi → email → IMAP → Flask → processed
 
 ### Key Findings
 
-- `https://` required — plain HTTP returns DreamHost "Site Not Found"
+- `https://` required - plain HTTP returns DreamHost "Site Not Found"
 - `web_fetch` works from Claude sessions when exact URL is provided by user
-- `curl` via bash_tool bypasses web_fetch URL restrictions — usable for automation
+- `curl` via bash_tool bypasses web_fetch URL restrictions - usable for automation
 - PHP `mail()` works same-domain with no SMTP config; `X-PHP-Originating-Script` header identifies Zaudi-originated emails for Flask routing
 - Credentials in cleartext PHP = known risk, flagged for future fix (ini file outside web root)
 
@@ -102,13 +102,13 @@ Vera (mobile/meta) → POST to zaudi.com
 → Vera polls get.php → retrieves response
 ```
 
-Async by design — 5 min round trip acceptable for away-from-desk use case.
+Async by design - 5 min round trip acceptable for away-from-desk use case.
 
 ### Files Deployed to zaudi.com
 
-- `hello.php` — GET health check, returns JSON + timestamp
-- `post.php` — POST receiver, writes to payloads table in mybrainlite
-- `mailtest.php` — GET/POST, sends test email to mybrain@zaudi.com
+- `hello.php` - GET health check, returns JSON + timestamp
+- `post.php` - POST receiver, writes to payloads table in mybrainlite
+- `mailtest.php` - GET/POST, sends test email to mybrain@zaudi.com
 
 ### Database
 
@@ -121,13 +121,13 @@ Async by design — 5 min round trip acceptable for away-from-desk use case.
 
 ## Proposed Next Steps
 
-1. **`get.php`** — Read recent payloads back (Vera polling endpoint)
-2. **`todos` table** — Mirror of Vera's active todo list, pushed after every daily
-3. **Sync layer** — POSTs todo snapshot to Zaudi at end of daily run
-4. **Authentication** — Simple API key header check on all endpoints (low friction, stops casual abuse)
-5. **`meta-memory` endpoint** — Vera-facing read/write for pins and notes in meta mode
-6. **Routing in Flask** — Use `X-PHP-Originating-Script` header to identify and route Zaudi emails
-7. **Retire output.txt** — Flat file was proof of concept only, DB is ground truth now
+1. **`get.php`** - Read recent payloads back (Vera polling endpoint)
+2. **`todos` table** - Mirror of Vera's active todo list, pushed after every daily
+3. **Sync layer** - POSTs todo snapshot to Zaudi at end of daily run
+4. **Authentication** - Simple API key header check on all endpoints (low friction, stops casual abuse)
+5. **`meta-memory` endpoint** - Vera-facing read/write for pins and notes in meta mode
+6. **Routing in Flask** - Use `X-PHP-Originating-Script` header to identify and route Zaudi emails
+7. **Retire output.txt** - Flat file was proof of concept only, DB is ground truth now
 
 ---
 
@@ -135,5 +135,5 @@ Async by design — 5 min round trip acceptable for away-from-desk use case.
 - Original proposal designated this as CRITICAL priority
 - Solves fundamental Meta mode write problem
 - Architectural breakthrough from March 24, 2026 session
-- Foundation fully proven April 13, 2026 — zaudi.com is the external node
-- Todo sync pipeline designed 2026-04-20 — see `2026_0420-feature-zaudi-todo-sync.md`
+- Foundation fully proven April 13, 2026 - zaudi.com is the external node
+- Todo sync pipeline designed 2026-04-20 - see `2026_0420-feature-zaudi-todo-sync.md`

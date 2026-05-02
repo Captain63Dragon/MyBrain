@@ -16,7 +16,7 @@ def list_bots():
 @bots_bp.route('/bots/execute', methods=['POST'])
 def execute_bot():
     """Generic bot executor - dynamically routes to any registered bot."""
-    # Reset chain depth at the start of each request — ensures [0] for top-level calls
+    # Reset chain depth at the start of each request - ensures [0] for top-level calls
     log.reset_depth()
 
     data = request.get_json() or {}
@@ -27,7 +27,7 @@ def execute_bot():
         return jsonify({"error": "bot_id required"}), 400
 
     # Detect origin before stripping persona
-    # Bridge always injects persona — browser UI never does
+    # Bridge always injects persona - browser UI never does
     is_ui = 'persona' not in params
     params.pop('persona', None)
     if is_ui:

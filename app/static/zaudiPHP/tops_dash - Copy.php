@@ -140,7 +140,7 @@ header a { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var
 .week-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 24px; }
 .week-bars { display: flex; align-items: flex-end; gap: 6px; min-height: 60px; margin-bottom: 6px; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative; border-radius: 6px; padding: 4px 2px 0; align-self: stretch; justify-content: flex-end; }
-.bar-selected-bg { position: absolute; top: 0; left: 0; right: 0; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; pointer-events: none; }
+.bar-selected-bg { position: absolute; inset: 0; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; pointer-events: none; }
 .bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; opacity: 0.7; min-height: 2px; }
 .bar.today { opacity: 1; }
 .bar-lbl { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--muted); text-transform: uppercase; }
@@ -240,7 +240,7 @@ header a { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var
                     $h_overage   = max($overage   > 0 ? 3 : 0, round($overage   * $scale));
                 ?>
                 <div class="bar-col" onclick="window.location='?d=<?= $ds['d'] ?>'" style="cursor:pointer">
-                    <?php if ($ds['selected']): ?><div class="bar-selected-bg" style="height:<?= $max_h + 8 ?>px"></div><?php endif ?>
+                    <?php if ($ds['selected']): ?><div class="bar-selected-bg"></div><?php endif ?>
                     <div style="display:flex;flex-direction:column;align-items:center;width:100%;position:relative">
                         <?php if ($h_overage > 0): ?>
                         <div class="bar" style="height:<?= $h_overage ?>px;background:#f87171;border-radius:3px 3px 0 0"></div>

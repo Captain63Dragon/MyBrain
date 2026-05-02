@@ -1,28 +1,21 @@
 """
-tops_service.py — TOPS local <-> Zaudi sync.
+tops_service.py - TOPS Neo4j <-> Zaudi sync.
 
-Local JSON files in tops_path() are source of truth.
+Neo4j is source of truth (FoodLibrary, FoodLog nodes).
 Zaudi tops_sync.php is the mobile UI / display layer.
-Walter's CSV feeds are append-only consume-and-clear pipes.
-
-Files (under MFI_PATH/tops/):
-  food_log.json         — source of truth for log entries
-  food_log.csv          — Walter's outbound feed (append-only)
-  food_library.json     — source of truth for library items
-  food_library.csv      — Walter's outbound feed (append-only)
 
 Sync directions per table:
-  PULL — get_unverified from Zaudi, INSERT new keys into local JSON,
-         append new rows to Walter's CSV. Existing local rows untouched.
-  PUSH — collect rows where synced_at IS NULL, POST update to Zaudi,
-         stamp synced_at on success, append to Walter's CSV.
+  PULL - get_unverified from Zaudi, MERGE new keys into Neo4j.
+         Existing local nodes untouched (MERGE on primary key).
+  PUSH - collect nodes where synced_at IS NULL, POST to Zaudi,
+         stamp synced_at on success.
 
 Edit convention:
-  Persona / UI / Mia MUST clear synced_at when modifying a row locally.
-  Push key is "synced_at IS NULL" — no other change detection.
+  Persona / UI / Mia MUST clear synced_at when modifying a node.
+  Push key is "synced_at IS NULL" - no other change detection.
 
 Trigger sites:
-  - run_sync_cycle(auto=True)  from mail_ingestor after each poll
+  - run_sync_cycle(auto=True)  from external_data_fetch after each poll
   - run_sync_cycle(auto=False) from /sync/zaudi/tops route (manual)
 
 Push guard mirrors api_service:
@@ -30,14 +23,13 @@ Push guard mirrors api_service:
   manual = 5min threshold OR dirty
 """
 
-import csv
-import json
 import requests
+from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from threading import Lock
 
 from flask import current_app
-from app.shared.mfi_shared import tops_path
+from app.services.neo4j_service import get_session
 
 # -- State (in-memory, intentionally non-persistent) -------------------------
 _sync_in_progress = False
@@ -48,6 +40,8 @@ _lock = Lock()
 
 AUTO_THRESHOLD   = timedelta(hours=1)
 MANUAL_THRESHOLD = timedelta(minutes=5)
+
+DAILY_TARGET = 1900
 
 # -- Schema field maps (mirror tops_sync.php) --------------------------------
 LOG_FIELDS = [
@@ -65,81 +59,28 @@ LIB_FIELDS = [
 
 TABLE_CONFIG = {
     'food_log': {
-        'fields':   LOG_FIELDS,
-        'key':      'log_id',
-        'json':     'food_log.json',
-        'csv':      'food_log.csv',
+        'fields':  LOG_FIELDS,
+        'key':     'log_id',
+        'label':   'FoodLog',
     },
     'food_library': {
-        'fields':   LIB_FIELDS,
-        'key':      'item_id',
-        'json':     'food_library.json',
-        'csv':      'food_library.csv',
+        'fields':  LIB_FIELDS,
+        'key':     'item_id',
+        'label':   'FoodLibrary',
     },
 }
 
 
-DAILY_TARGET = 1900  # matches tops_preprocessor.py
-
-# -- Preprocessor (absorbed from tops_preprocessor.py) -----------------------
-def _preprocess_log():
-    """Recalculate est_calories and daily_balance in food_log.json
-    using calorie values from food_library.json. Called before push."""
-    from collections import defaultdict
-
-    library = _read_json('food_library.json')
-    log     = _read_json('food_log.json')
-    if not log:
-        return
-
-    # Build lookup: (item_name, venue) -> calories or None
-    lookup = {}
-    for entry in library:
-        key = (entry.get('item_name'), entry.get('venue'))
-        cal = entry.get('calories')
-        lookup[key] = cal if cal else None
-
-    # Group by date
-    days = defaultdict(list)
-    for entry in log:
-        days[entry['logged_at'][:10]].append(entry)
-
-    for d in days:
-        days[d].sort(key=lambda e: e['logged_at'])
-
-    updated = []
-    for d in sorted(days.keys()):
-        running_total = 0
-        day_broken    = False
-        for entry in days[d]:
-            key      = (entry.get('item'), entry.get('venue'))
-            base_cal = lookup.get(key)
-            pct      = entry.get('portion_pct', 100)
-            if base_cal is not None and not day_broken:
-                est = round(base_cal * (pct / 100))
-                running_total += est
-                entry['est_calories']  = est
-                entry['daily_balance'] = DAILY_TARGET - running_total
-            else:
-                entry['est_calories']  = None
-                entry['daily_balance'] = None
-                day_broken = True
-            updated.append(entry)
-
-    _write_json('food_log.json', updated)
-    print(f'[tops_service] preprocess complete — {len(updated)} log entries recalculated')
-
-
-# -- Public — dirty flag -----------------------------------------------------
+# -- Public - dirty flag -----------------------------------------------------
 def mark_dirty():
-    """Signal local change — next sync cycle pushes regardless of threshold."""
+    """Signal local change - next sync cycle pushes regardless of threshold."""
     global _dirty
     _dirty = True
 
 
 # -- Sentinel file (persona fallback) ----------------------------------------
-# Persona edits JSON then writes an empty tops_path()/sync.dirty file.
-# Flask detects it at next poll, pushes, then deletes it.
+from app.shared.mfi_shared import tops_path
+
 DIRTY_SENTINEL = 'sync.dirty'
 
 def _is_dirty_file() -> bool:
@@ -157,12 +98,24 @@ def _clear_dirty_file():
         print(f"[tops_service] could not clear dirty sentinel: {e}")
 
 
-# -- Internal — push guard ---------------------------------------------------
+# -- Internal - push guard ---------------------------------------------------
+def _has_pending_nodes() -> bool:
+    """Check Neo4j for any unsynced nodes - source of truth for dirty state."""
+    try:
+        with get_session() as session:
+            result = session.run("""
+                MATCH (n) WHERE (n:FoodLog OR n:FoodLibrary) AND n.synced_at IS NULL
+                RETURN count(n) AS pending
+            """)
+            return result.single()['pending'] > 0
+    except Exception:
+        return False
+
 def _should_push(auto: bool, now: datetime) -> bool:
     last      = _last_auto_push   if auto else _last_manual_push
     threshold = AUTO_THRESHOLD    if auto else MANUAL_THRESHOLD
     stale     = last is None or (now - last) > threshold
-    return _dirty or _is_dirty_file() or stale
+    return _dirty or _is_dirty_file() or _has_pending_nodes() or stale
 
 
 def _record_push(auto: bool, now: datetime):
@@ -189,49 +142,82 @@ def _endpoint() -> str:
     return f"{_base_url()}/tops_sync.php"
 
 
-# -- File I/O ----------------------------------------------------------------
-def _ensure_dir():
-    tops_path().mkdir(parents=True, exist_ok=True)
+# -- Neo4j helpers -----------------------------------------------------------
+def _serialize(record) -> dict:
+    """Convert Neo4j temporal objects to JSON-serializable strings."""
+    result = {}
+    for key, value in dict(record).items():
+        if value is None:
+            result[key] = None
+        elif hasattr(value, 'iso_format'):
+            result[key] = value.iso_format()
+        else:
+            result[key] = value
+    return result
 
 
-def _read_json(filename: str) -> list[dict]:
-    path = tops_path() / filename
-    if not path.exists():
-        return []
-    try:
-        return json.loads(path.read_text(encoding='utf-8'))
-    except (json.JSONDecodeError, OSError) as e:
-        print(f"[tops_service] read error {filename}: {e}")
-        return []
+# -- Preprocessor ------------------------------------------------------------
+def _preprocess_log():
+    """Recalculate est_calories and daily_balance on FoodLog nodes.
+    Reads from Neo4j, processes in Python, writes back. Called before push."""
 
+    with get_session() as session:
+        # Get all log entries with their library calories
+        result = session.run("""
+            MATCH (log:FoodLog)
+            OPTIONAL MATCH (log)-[:LOGGED_ITEM]->(lib:FoodLibrary)
+            RETURN log.log_id AS log_id,
+                   log.logged_at AS logged_at,
+                   log.portion_pct AS portion_pct,
+                   lib.calories AS lib_calories
+            ORDER BY log.logged_at ASC
+        """)
+        entries = [dict(r) for r in result]
 
-def _write_json(filename: str, data: list[dict]):
-    """Atomic write: tmp file then rename."""
-    _ensure_dir()
-    path = tops_path() / filename
-    tmp  = path.with_suffix(path.suffix + '.tmp')
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str), encoding='utf-8')
-    tmp.replace(path)
-
-
-def _append_csv(filename: str, fields: list[str], rows: list[dict]):
-    """Append rows to Walter's CSV. Writes header if file is new/empty."""
-    if not rows:
+    if not entries:
         return
-    _ensure_dir()
-    path = tops_path() / filename
-    write_header = not path.exists() or path.stat().st_size == 0
-    with path.open('a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fields, extrasaction='ignore')
-        if write_header:
-            writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
+
+    # Group by date
+    days = defaultdict(list)
+    for entry in entries:
+        if entry['logged_at']:
+            days[str(entry['logged_at'])[:10]].append(entry)
+
+    updates = []
+    for d in sorted(days.keys()):
+        running_total = 0
+        day_broken    = False
+        for entry in days[d]:
+            base_cal = entry.get('lib_calories')
+            pct      = entry.get('portion_pct') or 100
+            if base_cal is not None and not day_broken:
+                est = round(base_cal * (pct / 100))
+                running_total += est
+                updates.append({
+                    'log_id':        entry['log_id'],
+                    'est_calories':  est,
+                    'daily_balance': DAILY_TARGET - running_total,
+                })
+            else:
+                day_broken = True
+
+    if not updates:
+        return
+
+    with get_session() as session:
+        session.run("""
+            UNWIND $updates AS u
+            MATCH (log:FoodLog {log_id: u.log_id})
+            SET log.est_calories  = u.est_calories,
+                log.daily_balance = u.daily_balance
+        """, updates=updates)
+
+    print(f'[tops_service] preprocess complete - {len(updates)} log entries recalculated')
 
 
 # -- Pull --------------------------------------------------------------------
 def pull(table: str) -> dict:
-    """Pull unverified rows from Zaudi. INSERT new keys only — never overwrite local edits."""
+    """Pull unverified rows from Zaudi. MERGE new keys into Neo4j only."""
     cfg = TABLE_CONFIG[table]
 
     try:
@@ -253,26 +239,38 @@ def pull(table: str) -> dict:
     if not remote_items:
         return {'pulled': 0, 'new': 0}
 
-    local = _read_json(cfg['json'])
-    local_keys = {row.get(cfg['key']) for row in local if row.get(cfg['key'])}
+    with get_session() as session:
+        # Get existing keys
+        result = session.run(
+            f"MATCH (n:{cfg['label']}) RETURN n.{cfg['key']} AS key"
+        )
+        existing_keys = {r['key'] for r in result}
 
-    new_rows = [r for r in remote_items if r.get(cfg['key']) and r[cfg['key']] not in local_keys]
+        new_rows = [r for r in remote_items if r.get(cfg['key']) and r[cfg['key']] not in existing_keys]
 
-    if new_rows:
-        local.extend(new_rows)
-        _write_json(cfg['json'], local)
-        _append_csv(cfg['csv'], cfg['fields'], new_rows)
+        if new_rows:
+            session.run(f"""
+                UNWIND $rows AS row
+                CREATE (n:{cfg['label']})
+                SET n = row
+            """, rows=new_rows)
 
     return {'pulled': len(remote_items), 'new': len(new_rows)}
 
 
 # -- Push --------------------------------------------------------------------
 def push(table: str) -> dict:
-    """Push rows where synced_at IS NULL. Stamp synced_at on success."""
+    """Push nodes where synced_at IS NULL to Zaudi. Stamp synced_at on success."""
     cfg = TABLE_CONFIG[table]
-    local = _read_json(cfg['json'])
 
-    pending = [r for r in local if not r.get('synced_at')]
+    with get_session() as session:
+        result = session.run(f"""
+            MATCH (n:{cfg['label']})
+            WHERE n.synced_at IS NULL
+            RETURN n
+        """)
+        pending = [_serialize(r['n']) for r in result]
+
     if not pending:
         return {'pushed': 0}
 
@@ -291,22 +289,23 @@ def push(table: str) -> dict:
     if data.get('status') != 'ok':
         return {'error': data.get('message', 'unknown'), 'pushed': 0}
 
-    # Stamp synced_at on rows we just sent
+    # Stamp synced_at on pushed nodes
+    pushed_keys = [r.get(cfg['key']) for r in pending if r.get(cfg['key'])]
     now_iso = datetime.now(timezone.utc).isoformat()
-    pushed_keys = {r.get(cfg['key']) for r in pending if r.get(cfg['key'])}
-    for row in local:
-        if row.get(cfg['key']) in pushed_keys:
-            row['synced_at'] = now_iso
 
-    _write_json(cfg['json'], local)
-    _append_csv(cfg['csv'], cfg['fields'], pending)
+    with get_session() as session:
+        session.run(f"""
+            UNWIND $keys AS key
+            MATCH (n:{cfg['label']} {{{cfg['key']}: key}})
+            SET n.synced_at = $now
+        """, keys=pushed_keys, now=now_iso)
 
     return {'pushed': data.get('upserted', len(pending))}
 
 
 # -- Orchestrator ------------------------------------------------------------
 def run_sync_cycle(reason: str = '', auto: bool = False) -> dict:
-    """Pull + push both tables. Hook target for mail_ingestor and /sync routes."""
+    """Pull + push both tables."""
     global _sync_in_progress
 
     with _lock:
@@ -318,17 +317,15 @@ def run_sync_cycle(reason: str = '', auto: bool = False) -> dict:
     report: dict = {'reason': reason, 'auto': auto}
 
     try:
-        # Pull always — cheap, surfaces new items
         report['pull_log'] = pull('food_log')
         report['pull_lib'] = pull('food_library')
 
-        # Push gated by threshold + dirty flag
         if not _should_push(auto, now):
             label = 'auto' if auto else 'manual'
             last  = _last_auto_push if auto else _last_manual_push
             report['push_skipped']     = True
             report['push_skip_reason'] = (
-                f"{label} threshold not met, clean — "
+                f"{label} threshold not met, clean - "
                 f"last push {last.isoformat() if last else 'never'}"
             )
             report['status'] = 'ok'
@@ -338,8 +335,7 @@ def run_sync_cycle(reason: str = '', auto: bool = False) -> dict:
         report['push_log'] = push('food_log')
         report['push_lib'] = push('food_library')
 
-        # Only stamp the push if at least one side succeeded
-        if 'error' not in report['push_log'] or 'error' not in report['push_lib']:
+        if 'error' not in report.get('push_log', {}) or 'error' not in report.get('push_lib', {}):
             _record_push(auto, now)
 
         report['status'] = 'ok'

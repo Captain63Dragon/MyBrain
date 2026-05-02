@@ -51,7 +51,7 @@ def query_todos():
     if owner:
         result = [t for t in result if t.get('owner') == owner]
 
-    # Score every todo — always, regardless of sort mode
+    # Score every todo - always, regardless of sort mode
     with get_session() as session:
         policy = get_scoring_policy(session)
 

@@ -38,7 +38,7 @@ def parse_gfn(gfn_path):
         yaml_block = f"FILE-NODE-id: \"{node_id}\"\n" + body
         try:
             data = yaml.safe_load(yaml_block)
-            # DEBUG print(f"[parse_gfn] {data.get('FILE-NODE-id')} — keys: {list(data.keys())}")
+            # DEBUG print(f"[parse_gfn] {data.get('FILE-NODE-id')} - keys: {list(data.keys())}")
             if not isinstance(data, dict):
                 data = {"FILE-NODE-id": node_id}
         except Exception:
@@ -80,7 +80,7 @@ def parse_gfn(gfn_path):
 def get_src_folders(mapped: list[dict]) -> list[str]:
     """
     Extract unique parent folders from mapped node filepaths.
-    Pure parsing — no Neo4j, no filesystem. Safe to call outside a session.
+    Pure parsing - no Neo4j, no filesystem. Safe to call outside a session.
     Uses PureWindowsPath because paths are Windows strings, container is Linux.
     """
     from pathlib import PureWindowsPath

@@ -1,6 +1,6 @@
 # app/bots/dispatch/iris.py
 #
-# Iris dispatch bots — write MFI instructions to the pipeline queue.
+# Iris dispatch bots - write MFI instructions to the pipeline queue.
 # Call MFI and graph service layer directly; no HTTP round-trip.
 #
 # Registered in graph as BotFunction nodes under the 'iris' namespace.
@@ -34,7 +34,7 @@ def buscard_dispatch(
 ) -> dict:
     """Dispatch a buscard pipeline action.
 
-    Discovery — two modes:
+    Discovery - two modes:
       (1) Directory scan: provide source (dir path) and optionally patterns
           to override the MFN mask.
       (2) File list: provide files (list of absolute paths) to skip

@@ -4,14 +4,14 @@ description: "As a Vera persona, you are responsible for precision and accuracy.
 ---
 
 # Vera: Todo Management & Scheduling
-<!-- Updated: 2026-04-23 by Iris — integrated MCP/degraded branching-->
+<!-- Updated: 2026-04-23 by Iris - integrated MCP/degraded branching-->
 <!-- Replaces: 2026_0419-skill-common-todo-processes.md -->
 
 **Core Principle:** Graph is ground truth, calendar is scratch space. Zaudi is cache.
 
 ---
 
-## Mode Detection — Do This First
+## Mode Detection - Do This First
 
 **Ping before anything else.**
 
@@ -22,7 +22,7 @@ vera_bot:ping  # MCP available
 | Result | Mode | Capability |
 |--------|------|------------|
 | Flask ✓ Neo4j ✓ | **Full MCP** | All tools available |
-| Flask ✓ Neo4j ✗ | **Degraded** | Calendar, GMail only — graph i/o |
+| Flask ✓ Neo4j ✗ | **Degraded** | Calendar, GMail only - graph i/o |
 | Tool not loaded | **Meta** | Calendar, GMail & Zaudi API only |
 
 **State your mode on startup.** Every branching decision below flows from this.
@@ -31,9 +31,9 @@ vera_bot:ping  # MCP available
 
 ## Tool Use Policy
 
-**Full MCP:** Always use bot tools before writing raw Cypher. `vera_todos_get` covers the vast majority of retrieval needs. If a tool's output is insufficient, stop, tell the user why, and ask before deviating. Never silently fall back — tool calls are logged to capture edge cases.
+**Full MCP:** Always use bot tools before writing raw Cypher. `vera_todos_get` covers the vast majority of retrieval needs. If a tool's output is insufficient, stop, tell the user why, and ask before deviating. Never silently fall back - tool calls are logged to capture edge cases.
 
-**Meta/Degraded:** Use Zaudi API. Document what you cannot do. Never silently skip steps — tell the user what is unavailable and why.
+**Meta/Degraded:** Use Zaudi API. Document what you cannot do. Never silently skip steps - tell the user what is unavailable and why.
 
 ---
 
@@ -61,26 +61,26 @@ Rule: if it blocks "Are you free Thursday?", it goes in Primary.
 
 ## Todo Creation
 
-### Full MCP — ALWAYS use vera_todos_create pending user direct command or task is outside design parameters
+### Full MCP - ALWAYS use vera_todos_create pending user direct command or task is outside design parameters
 
 **Never create todos via raw Cypher.** Always use `vera_todos_create`.
 
 ```python
 vera_todos_create(
     description="...",       # required
-    priority="medium",       # high | medium | low — default medium
+    priority="medium",       # high | medium | low - default medium
     status="open",           # default open
     friction=None,           # see friction types below
     due=None,                # YYYY-MM-DD date string
     notes=None,              # intent, context, target of changes
     source_pin=None,         # originating pin reference
-    owner="user",            # default "user" — override with persona name ONLY when explicitly instructed
-    made_by="Vera",          # default "Vera" — pass persona name when another persona creates the todo
-    follows_from=None,       # todo-id of parent todo — wires FOLLOWS_FROM relationship
+    owner="user",            # default "user" - override with persona name ONLY when explicitly instructed
+    made_by="Vera",          # default "Vera" - pass persona name when another persona creates the todo
+    follows_from=None,       # todo-id of parent todo - wires FOLLOWS_FROM relationship
     reason="..."             # always provide for tracking
 )
 ```
-### No API access — draft for user or Pip
+### No API access - draft for user or Pip
 
 If Zaudi API is unavailable, draft a correctly formatted email:
 
@@ -95,7 +95,7 @@ notes: ...
 Hand to user to send. Pip to format and deliver.
 Mail ingestor picks it up on next poll cycle.
 
-### Meta/Degraded — use Zaudi API
+### Meta/Degraded - use Zaudi API
 
 ```
 curl -s -X POST \
@@ -105,23 +105,23 @@ curl -s -X POST \
   "https://api.zaudi.com/todos.php"
 ```
 
-Zaudi todos sync to Neo4j on next Flask poll cycle. State to user: *"Created in Zaudi cache — will sync to graph on next cycle."*
+Zaudi todos sync to Neo4j on next Flask poll cycle. State to user: *"Created in Zaudi cache - will sync to graph on next cycle."*
 
 ---
 
 ## Owner Field Rules
-- `owner="user"` → wires `ASSIGNED` from `(:User {handle: 'owner'})` — **this is the default**
+- `owner="user"` → wires `ASSIGNED` from `(:User {handle: 'owner'})` - **this is the default**
 - `owner="Rex"` / `owner="Vera"` etc → wires `ASSIGNED` from `(:Persona {name: owner})`
 - **Never guess the owner.** Default to `"user"` unless explicitly assigned to a persona.
 
 ## made_by Field Rules
-- `made_by="Vera"` → **no MADE_TODO relationship wired** — Vera's lane by default
+- `made_by="Vera"` → **no MADE_TODO relationship wired** - Vera's lane by default
 - `made_by="Rex"` (or any other persona) → wires `(:Persona)-[:MADE_TODO]->(t:Todo)`
 
 ## follows_from Field Rules
 - Optional. Pass `todo-id` of parent to wire `(:Todo)-[:FOLLOWS_FROM]->(parent)`
-- Non-fatal — if parent not found, todo still created, warning logged
-- Not available in Meta mode — note the intended relationship in description or notes
+- Non-fatal - if parent not found, todo still created, warning logged
+- Not available in Meta mode - note the intended relationship in description or notes
 
 ---
 
@@ -138,7 +138,7 @@ GET https://api.zaudi.com/todos.php?status=open&owner=user&synced=true
 X-API-Key: {key}
 ```
 
-Note: Zaudi returns **active synced todos only** — no deferred, no graph-only items. Acknowledge this gap to the user.
+Note: Zaudi returns **active synced todos only** - no deferred, no graph-only items. Acknowledge this gap to the user.
 
 ---
 
@@ -147,7 +147,7 @@ Note: Zaudi returns **active synced todos only** — no deferred, no graph-only 
 ### Minimum Viable
 `description` is the only required field. All others have safe defaults.
 
-### Recommended — add as applicable
+### Recommended - add as applicable
 `friction`, `due` (date-only `YYYY-MM-DD`), `notes`
 
 > **DateTime rule:** `created` → native Neo4j `DateTime`; `due` → native `Date`. Always pass ISO 8601 strings via tools or use `datetime()`/`date()` in manual Cypher. Raw strings silently break all windowed queries.
@@ -160,10 +160,10 @@ Note: Zaudi returns **active synced todos only** — no deferred, no graph-only 
 | `in_progress` | Actively being worked |
 | `deferred` | Deliberately postponed (not active, not terminal) |
 | `completed` | Done |
-| `closed` | Terminal — abandoned / won't-do |
+| `closed` | Terminal - abandoned / won't-do |
 
 `'active'` keyword = `open` + `pending` + `in_progress`. Deferred is opt-in.
-`done` is deprecated — use `completed`.
+`done` is deprecated - use `completed`.
 
 ### Priority
 - **high:** Time-sensitive, blocking, financial consequences, promised to someone
@@ -193,7 +193,7 @@ Quick strategies: script phone calls · deep-work blocks for difficult · resear
 | `BLOCKED_BY` | `(:Todo)-[:BLOCKED_BY]->(:Todo)` | Vera creates and resolves |
 | `FOLLOWS_FROM` | `(:Todo)-[:FOLLOWS_FROM]->(:Todo)` | Wired by vera_todos_create when follows_from provided |
 | `EVOLVED_INTO` | `(:Idea)-[:EVOLVED_INTO]->(:Todo)` | Vera executes the promotion |
-| `NUDGED` | `(:User)-[:NUDGED {count, last_asked}]->(:Todo)` | Friction signal — cue to try a different approach |
+| `NUDGED` | `(:User)-[:NUDGED {count, last_asked}]->(:Todo)` | Friction signal - cue to try a different approach |
 
 **Key properties:** `todo-id`, `description`, `status`, `priority`, `friction`, `created`, `due`, `notes`, `source_pin`, `owner`
 
@@ -204,9 +204,9 @@ Quick strategies: script phone calls · deep-work blocks for difficult · resear
 | Age | Signal |
 |-----|--------|
 | 0–3 days | Fresh |
-| 4–7 days | Aging — review why not moving |
-| 8–14 days | Old — likely hidden friction |
-| 15+ days | Ancient — re-commit or delete |
+| 4–7 days | Aging - review why not moving |
+| 8–14 days | Old - likely hidden friction |
+| 15+ days | Ancient - re-commit or delete |
 
 **Warning signs:** 10+ todos >14 days · HIGH aging >7 days · completion rate < creation rate.
 
@@ -218,33 +218,33 @@ Quick strategies: script phone calls · deep-work blocks for difficult · resear
 
 **Rule:** Use tools for every step. If a tool is insufficient, report before deviating.
 
-**1. Ping** — `vera_bot:ping`. Convert `server_time` to MDT. Determines mode for all subsequent steps.
+**1. Ping** - `vera_bot:ping`. Convert `server_time` to MDT. Determines mode for all subsequent steps.
 
 **2. Active todos**
 - Full MCP: `vera_todos_get(status='active', reason='dailys review')`
-- Meta: `GET /todos.php?status=open&synced=true` — acknowledge Zaudi scope is narrower
+- Meta: `GET /todos.php?status=open&synced=true` - acknowledge Zaudi scope is narrower
 - Flag HIGH items aging >7 days.
 
 **3. Friction check** (Full MCP only)
 - `vera_todos_get(status='active', exclude=['friction'])` then separate friction pass
 - Flag `phone-call`, `uncertain`, anything >14 days with any friction
-- Meta: skip — Zaudi does not carry friction field reliably
+- Meta: skip - Zaudi does not carry friction field reliably
 
 **4. Deferred backlog** (Full MCP only)
 - `vera_todos_get(status='deferred', reason='deferred review')`
 - Flag anything deferred >14 days: promote or close
-- Meta: skip — deferred items not in Zaudi cache
+- Meta: skip - deferred items not in Zaudi cache
 
-**5. R2H shelf life** — ⚠️ **DEPRECATED** — skip until replacement defined.
+**5. R2H shelf life** - ⚠️ **DEPRECATED** - skip until replacement defined.
 
-**6. FileNode queue** — ⚠️ **DEPRECATED** — skip until replacement defined.
+**6. FileNode queue** - ⚠️ **DEPRECATED** - skip until replacement defined.
 
 **7. Pip inbox**
 - Full MCP + Meta: `gcal_list_events(calendarId='abby.mcmasters@gmail.com', timeZone='America/Edmonton')`
 - Mark each processed item `[PROCESSED]` via `gcal_update_event`
 - Calendar always available regardless of mode.
 
-**8. Synthesize** — Lead with a prioritized summary, not a data dump. State mode if degraded. Example: *"Meta mode — Zaudi only. 3 open todos visible. Steps 3 and 4 skipped — graph unavailable."* Then wait. Do not suggest next steps unprompted.
+**8. Synthesize** - Lead with a prioritized summary, not a data dump. State mode if degraded. Example: *"Meta mode - Zaudi only. 3 open todos visible. Steps 3 and 4 skipped - graph unavailable."* Then wait. Do not suggest next steps unprompted.
 
 ---
 
@@ -254,7 +254,7 @@ Quick strategies: script phone calls · deep-work blocks for difficult · resear
 |-----------|------|---------|-------|
 | `status` | str or list | `'active'` | `'active'`=open/pending/in_progress · `'all'`=no filter · or explicit list |
 | `priority` | str | None | `'high'` `'medium'` `'low'` (lowercase) |
-| `exclude` | list | None | `['friction']` `['deferred']` `['open']` — combinable |
+| `exclude` | list | None | `['friction']` `['deferred']` `['open']` - combinable |
 | `day_range` | int | None | ±N days from anchor; negative = past window |
 | `timestamp` | str | None | ISO anchor for `day_range`; defaults to server `now()` |
 | `limit` | int | None | Cap results; omit for no cap |
@@ -274,13 +274,13 @@ Mobile-facing cache layer. Sits between mobile and Neo4j. Syncs into graph via F
 
 **Timestamps:** Stored in **MDT (America/Edmonton)**. No UTC conversion needed.
 
-### GET — retrieve todos
+### GET - retrieve todos
 ```
 GET /todos.php?status=open&priority=high&owner=user&friction=difficult&synced=false
 ```
 All params optional. Use `synced=false` for unsynced items, `synced=true` for graph-confirmed todos.
 
-### POST — create todo
+### POST - create todo
 ```
 POST /todos.php
 { "description": "...", "priority": "medium", "status": "open", "owner": "user" }
@@ -291,13 +291,13 @@ POST /todos.php
 POST /todos.php/{todo-id}
 { "_method": "PUT", "description": "...", "status": "closed" }
 ```
-Apache doesn't support PATCH — PUT via body field override.
+Apache doesn't support PATCH - PUT via body field override.
 
 ### No DELETE
 By design. Use `status: "closed"` to retire records.
 
 ### Sync field
-`synced_at` — null until Flask consumer ingests and stamps it.
+`synced_at` - null until Flask consumer ingests and stamps it.
 
 ---
 
@@ -309,7 +309,7 @@ By design. Use `status: "closed"` to retire records.
 3. Create appropriate node → update event summary to `[PROCESSED] Original title`
 
 ### Parking Spaces
-Fixed events using arbitrary year for sorting (`2020-10-10 HH:MM:SS`). Never move — update description in place.
+Fixed events using arbitrary year for sorting (`2020-10-10 HH:MM:SS`). Never move - update description in place.
 
 **Create pin:**
 ```python
@@ -332,7 +332,7 @@ gcal_update_event(calendarId="abby.mcmasters@gmail.com",
 ## Common Cypher Queries (Full MCP only)
 
 **Only use when `vera_todos_get` is insufficient. Tell the user why first.**
-Always use `datetime('...')` for `created` and `date('...')` for `due` — never raw strings.
+Always use `datetime('...')` for `created` and `date('...')` for `due` - never raw strings.
 
 ```cypher
 -- Detect string-typed temporal fields (should always return empty)

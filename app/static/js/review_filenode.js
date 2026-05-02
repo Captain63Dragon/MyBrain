@@ -309,7 +309,7 @@ function createRow(fnode, rootpath) {
     cb.addEventListener('change', updateBulkActions);
     tr.appendChild(checkboxTd);
 
-    // Data columns — driven by tableMapping, built from mfn.table_columns 
+    // Data columns - driven by tableMapping, built from mfn.table_columns 
     for (const [className, propName] of Object.entries(tableMapping)) {
         const td = document.createElement('td');
         let newValue = fnode[propName];
@@ -419,12 +419,12 @@ function getFormFields(form) {
         if (el.type === 'checkbox') {
             fields[nodeKey] = el.checked;
         } else if (el.value === '' && el.defaultValue !== '') {
-            // Intentional clear — explicitly null so caller can decide
+            // Intentional clear - explicitly null so caller can decide
             fields[nodeKey] = null;
         } else if (el.value !== '') {
             fields[nodeKey] = el.value;
         }
-        // empty and was empty — skip entirely
+        // empty and was empty - skip entirely
     });
     return fields;
 }
@@ -811,12 +811,12 @@ function updateReviewForm(data, rootpath) {
             mfn = item.meta_file_node;
             mfn.core_properties = JSON.parse(mfn.core_properties);
             mfn.optional_properties = JSON.parse(mfn.optional_properties);
-            // table_columns comes from graph as a native list — no parse needed
+            // table_columns comes from graph as a native list - no parse needed
             // Build fieldMapping from MFN properties
             fieldMapping = { 'node': 'FILE-NODE-id', 'filepath': 'filepath', 'reviewed': 'reviewed' };
             for (const prop of Object.keys(mfn.core_properties)) fieldMapping[prop] = prop;
             for (const prop of Object.keys(mfn.optional_properties)) fieldMapping[prop] = prop;
-            // tableMapping driven by mfn.table_columns — MFN owns the list view column definition
+            // tableMapping driven by mfn.table_columns - MFN owns the list view column definition
             const tableColumns = mfn.table_columns || ['node', 'filepath'];
             tableMapping = Object.fromEntries(
                 tableColumns
@@ -921,7 +921,7 @@ function updateRenameDirtyCount() {
     const doneRows = document.querySelectorAll('#renameTable tr[style*="display: none"]');
     
     if (allRows.length > 0 && allRows.length === doneRows.length) {
-        // all done — hide tab, switch to list
+        // all done - hide tab, switch to list
         document.querySelector('[data-tab="rename"]').classList.add('hidden');
         document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
         document.getElementById('list-pane').style.display = 'block';
@@ -955,7 +955,7 @@ async function validateAndDispatch() {
         const targetFile = fileInp.value;
         const source = node.path + '\\' + node.file;
         const target = targetPath + '\\' + targetFile;
-        // no change — skip
+        // no change - skip
         if (source === target) {
             resetRenameRow(i);
             continue;
@@ -981,7 +981,7 @@ function buildRenameTable(nodes) {
         tr.innerHTML = `
             <td class="col-status"><span class="status-dot hidden" id="rdot-${i}"></span></td>
             <td class="col-id node" title="${node.id}">${node.id}</td>
-            <td class="col-contact">${node.contact || '<span class="null-val">—</span>'}</td>
+            <td class="col-contact">${node.contact || '<span class="null-val">-</span>'}</td>
             <td class="col-path">
                 <input class="editable" id="rpath-${i}" data-field="path" data-orig="${node.path}" value="${node.path}" />
                 <span class="flag-msg" id="rflag-${i}"></span>
@@ -1012,7 +1012,7 @@ function watchRenameResult(i, mfi_id) {
         if (data.status === 'timeout') { 
             es.close();
             setRenameRowState(i, 'flagged');
-            document.getElementById(`rflag-${i}`).textContent = 'No response — check manually';
+            document.getElementById(`rflag-${i}`).textContent = 'No response - check manually';
             return; 
         }
         
@@ -1031,7 +1031,7 @@ function watchRenameResult(i, mfi_id) {
                 }, 800);
             }, 1200);
         } else {
-            // failed path — data.error should have the message
+            // failed path - data.error should have the message
             const errMsg = data.error || 'Unknown error';
             setRenameRowState(i, 'error');
             setRenameActions(i, 'error', errMsg);

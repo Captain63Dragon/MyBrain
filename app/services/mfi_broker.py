@@ -1,5 +1,5 @@
 """
-mfi_broker — Flask-side background thread.
+mfi_broker - Flask-side background thread.
 Watches completed/ for result MFIs, routes to the correct processor,
 records processed mfi_ids in the result queue for SSE consumers.
 Dead letters pruned daily.
@@ -16,13 +16,13 @@ _queue_lock   = threading.Lock()
 def push_result(mfi_id: str, result: dict):
     with _queue_lock:
         _result_queue[mfi_id] = {'result': result, 'created': time.time()}
-        # DEBUG print(f"[mfi_broker] push_result: {mfi_id} — queue id: {id(_result_queue)} depth: {len(_result_queue)}")
+        # DEBUG print(f"[mfi_broker] push_result: {mfi_id} - queue id: {id(_result_queue)} depth: {len(_result_queue)}")
 
 def pop_result(mfi_id: str) -> dict | None:
     """Return and remove result if present, None if not yet ready."""
     with _queue_lock:
         entry = _result_queue.pop(mfi_id, None)
-        # DEBUG print(f"[mfi_broker] pop_result: {entry} — queue id: {id(_result_queue)} depth: {len(_result_queue)}")
+        # DEBUG print(f"[mfi_broker] pop_result: {entry} - queue id: {id(_result_queue)} depth: {len(_result_queue)}")
         return entry['result'] if entry else None
 
 def peek_result(mfi_id: str) -> bool:

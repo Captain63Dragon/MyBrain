@@ -127,7 +127,7 @@ def suggest_file_node_id(filepath: str,
             chosen = mtime if mtime else ctime
             dt = datetime.fromtimestamp(chosen)
         except Exception:
-            # timestamps failed despite file existing — re-raise
+            # timestamps failed despite file existing - re-raise
             raise
     else: # this safely removes the date ish string found.
         dt, start, end = result
@@ -172,7 +172,7 @@ def suggest_file_node_id_from_result(filepath: str,
         max_attempts: int = 100) -> str:
     """
     Propose a FILE-NODE id from a result MFI file entry.
-    No filesystem access — uses mtime supplied by the Windows watcher.
+    No filesystem access - uses mtime supplied by the Windows watcher.
     
     Args:
         filepath: Windows path from result MFI (not accessed, parsed only)
@@ -221,7 +221,7 @@ def suggest_file_node_id_from_result(filepath: str,
 def derive_file_node_id(filepath: str, mtime: str) -> str:
     """
     Derive the canonical FILE-NODE-id from a filepath.
-    No uniqueness check — just generates the ID the file should have.
+    No uniqueness check - just generates the ID the file should have.
     """
     from pathlib import PureWindowsPath
     stem = PureWindowsPath(filepath).stem

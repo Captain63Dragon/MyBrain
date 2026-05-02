@@ -36,10 +36,13 @@ def log_json(label, obj):
 
 # Parse persona argument before logging starts
 parser = argparse.ArgumentParser()
-parser.add_argument('--persona', required=True, choices=['vera', 'iris', 'rex', 'ash'],
+parser.add_argument('--persona', required=True, choices=['vera', 'iris', 'rex', 'ash', 'mia'],
                     help='Persona to filter bots for')
 args = parser.parse_args()
 PERSONA = args.persona
+
+# Per-persona log file - prevents interleaved output from concurrent bridges
+LOG_FILE = Path(__file__).parent.parent / "logs" / f"mcp_bridge_{PERSONA}.log"
 
 PID  = os.getpid()
 PPID = os.getppid()
@@ -75,7 +78,7 @@ def tool_error(call_id, message):
 # Static tool assignments - which persona gets which tool
 # Use 'all' for universal tools (e.g., ping)
 # Tools not listed here are deprecated and won't be loaded
-# Extra bot prefixes per persona — loaded in addition to the persona's own prefix.
+# Extra bot prefixes per persona - loaded in addition to the persona's own prefix.
 # Use this for shared namespaces that belong to a specific bridge, not all bridges.
 PERSONA_EXTRA_PREFIXES = {
     'iris': ['graph.'],
@@ -242,7 +245,7 @@ def execute_tool_by_name(name, args, caller="unknown"):
 
 # I think this is dead code as well.
 def handle_tool_call(call_id, name, args):
-    log(f"[SYNC handle_tool_call] ENTER — SYNC PATH IS ALIVE! call_id={call_id} tool={name}")
+    log(f"[SYNC handle_tool_call] ENTER - SYNC PATH IS ALIVE! call_id={call_id} tool={name}")
     try:
         result = execute_tool_by_name(name, args, caller=f"sync:{call_id}")
         tool_result(call_id, result)

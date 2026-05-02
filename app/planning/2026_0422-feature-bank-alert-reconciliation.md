@@ -4,7 +4,7 @@ Todo: todo-1776873571843
 
 ## Problem
 Scotia alerts every transaction including trivial ones (gum, groceries).
-Alerts currently route to two addresses (Tim@zaudi.com and terminalman90@gmail.com) — mixed, noisy, unactionable at volume.
+Alerts currently route to two addresses (Tim@zaudi.com and terminalman90@gmail.com) - mixed, noisy, unactionable at volume.
 The purpose of an alert is to flag the unexpected. When everything fires, nothing is a signal.
 
 ## Sample Files
@@ -14,10 +14,10 @@ The purpose of an alert is to flag the unexpected. When everything fires, nothin
 ## Goal
 Two outputs from one pipeline:
 
-1. **Anomaly Flag** — transactions in bank statement with no matching alert email
+1. **Anomaly Flag** - transactions in bank statement with no matching alert email
    (unknown activity: fraud, Monica's purchases, anything unexpected)
 
-2. **Spending Context** — categorized summary on user's terms, not the bank's
+2. **Spending Context** - categorized summary on user's terms, not the bank's
    (where the money actually goes, filtered by what is important to the user)
 
 ## Inputs
@@ -31,9 +31,9 @@ Two outputs from one pipeline:
 - Alert with no statement row → note as pending / not yet posted
 
 ## Design Constraints
-- No bank API, no account access — statement CSV is ground truth
+- No bank API, no account access - statement CSV is ground truth
 - Emails are context and early warning layer only
-- User downloads statement, drops to staging folder — hands-off from there
+- User downloads statement, drops to staging folder - hands-off from there
 - Output: summary report + flagged items only (not a full transaction log)
 
 ## Pre-requisites (user actions)

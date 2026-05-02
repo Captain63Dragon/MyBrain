@@ -1,6 +1,6 @@
 # app/bots/db/graph.py
 """
-Graph utility functions — persona-agnostic relationship operations.
+Graph utility functions - persona-agnostic relationship operations.
 
 These functions operate on arbitrary node labels and relationship types.
 They are available to any persona or process via the generic /bots/execute route.
@@ -43,7 +43,7 @@ def _serialize_props(props: dict) -> dict:
     return result
 
 # ── Valid relationship types ──────────────────────────────────────────────────
-# Hardcoded by design — stable rules, no graph round-trip needed.
+# Hardcoded by design - stable rules, no graph round-trip needed.
 # Add new types here as the schema evolves.
 
 VALID_REL_TYPES = [
@@ -83,13 +83,13 @@ def create_relationship(
 ) -> dict:
     """
     Wire a relationship between any two nodes using MERGE semantics.
-    Idempotent — safe to call multiple times, no duplicates created.
+    Idempotent - safe to call multiple times, no duplicates created.
 
     source_label:  Node label for source  e.g. 'Todo'
     source_match:  Property dict to identify source  e.g. {'todo-id': 'todo-123'}
     target_label:  Node label for target  e.g. 'Todo'
     target_match:  Property dict to identify target  e.g. {'todo-id': 'todo-456'}
-    rel_type:      Relationship type — must be in VALID_REL_TYPES
+    rel_type:      Relationship type - must be in VALID_REL_TYPES
     properties:    Optional properties to set on the relationship
     reason:        Logging context
     log_call:      Whether to log this call
@@ -112,7 +112,7 @@ def create_relationship(
 
     # Build WHERE conditions for source and target match dicts.
     # Property names are backtick-quoted in Cypher (supports hyphens).
-    # Param names use underscores — hyphens in $names are parsed as subtraction.
+    # Param names use underscores - hyphens in $names are parsed as subtraction.
     def _param_key(prefix: str, k: str) -> str:
         return f"{prefix}_{k.replace('-', '_').replace('.', '_')}"
 
@@ -164,7 +164,7 @@ def create_relationship(
                 "rel_properties": dict(record["rel_properties"]) if record["rel_properties"] else {},
             }
         else:
-            msg = "No matching nodes found — check labels and match properties"
+            msg = "No matching nodes found - check labels and match properties"
             log.error(GRAPH_FN_REL_CREATE, reason=reason, detail=msg)
             return {"error": msg, "source_match": source_match, "target_match": target_match}
     except Exception as e:
@@ -190,11 +190,11 @@ def inspect_relationships(
 ) -> dict:
     """
     Return all relationships on a node, optionally filtered by type and direction.
-    Read-only — no VALID_REL_TYPES check (inspect is for discovery).
+    Read-only - no VALID_REL_TYPES check (inspect is for discovery).
 
     node_label:  Label of the node to inspect  e.g. 'Todo'
     node_match:  Property dict to identify node  e.g. {'todo-id': 'todo-123'}
-    rel_type:    Optional — filter to this relationship type
+    rel_type:    Optional - filter to this relationship type
     direction:   'incoming' | 'outgoing' | 'either' (default)
     """
     if log_call:
@@ -370,7 +370,7 @@ def reroute_relationship(
     fixed_label/match:  The node that stays put (e.g. Todo)
     old_label/match:    Current other end to detach from (e.g. old Persona)
     new_label/match:    New other end to wire to (e.g. new Persona or User)
-    direction:          Relative to fixed node — 'incoming' = (other)-[r]->(fixed)
+    direction:          Relative to fixed node - 'incoming' = (other)-[r]->(fixed)
                                                   'outgoing' = (fixed)-[r]->(other)
     """
     if log_call:

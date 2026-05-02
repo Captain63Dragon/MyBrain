@@ -1,6 +1,6 @@
 """
-extract_attachments.py — Standalone script to extract attachments from a raw .eml file.
-Calls mail_service.extract_attachments() — no duplication.
+extract_attachments.py - Standalone script to extract attachments from a raw .eml file.
+Calls mail_service.extract_attachments() - no duplication.
 
 Usage:
     # By uid_hash (looks up in archive-raw/):
@@ -36,7 +36,7 @@ def main():
     # Resolve to a Path
     p = Path(arg)
     if not p.exists():
-        # Try treating as uid_hash — look up in archive-raw/
+        # Try treating as uid_hash - look up in archive-raw/
         candidate = email_archive_path() / f"{arg}.eml"
         if candidate.exists():
             p = candidate

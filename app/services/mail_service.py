@@ -1,14 +1,14 @@
 """
-mail_service.py — Tag-based email parsing, triage, and auto-creation.
+mail_service.py - Tag-based email parsing, triage, and auto-creation.
 Called by mail_ingestor._poll() after local .eml archive write.
 
 Pipeline:
   1. Decode MIME subject, extract [tag]
   2. Strip preamble, extract [VERA:] instructions
   3. Strip code blocks before field extraction
-  4. Apply per-type schema — canonical fields, recovery mappings, raw_extras
-  5. For markdown-heavy emails (no Pip preamble) — extract ## sections
-  6. Gate auto-create — permissive: preamble + primary field = intent confirmed
+  4. Apply per-type schema - canonical fields, recovery mappings, raw_extras
+  5. For markdown-heavy emails (no Pip preamble) - extract ## sections
+  6. Gate auto-create - permissive: preamble + primary field = intent confirmed
   7. Route: auto-create → archive-instructions/ on success, vera-queue/{tag}/ on fail
             triage-only or gate fail → vera-queue/{tag}/ with extracted fields attached
             untagged → vera-queue/untagged/
@@ -396,10 +396,10 @@ def extract_fields(parsed: dict, tag: str) -> dict:
     if freeform_field:
         body, freeform_content = _extract_freeform_block(body, freeform_field)
 
-    # Pass 1 — key:value extraction
+    # Pass 1 - key:value extraction
     raw = _extract_raw_fields(body)
 
-    # Pass 2 — markdown sections (supplement Pass 1, don't overwrite)
+    # Pass 2 - markdown sections (supplement Pass 1, don't overwrite)
     md_sections = _extract_md_sections(body, schema)
     for k, v in md_sections.items():
         if k not in raw:

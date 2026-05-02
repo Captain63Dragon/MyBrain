@@ -18,14 +18,14 @@ table_columns:
   - appointment_location
   - filepath
   
-# System fields — rendered readonly, never in add-field picker
+# System fields - rendered readonly, never in add-field picker
 system_properties:
   - FILE-NODE-id
   - filepath
   - dispatcher_submitted
   - treasurer_submitted
 
-# Editable properties — render order is form order
+# Editable properties - render order is form order
 core_properties:
   patient_name:
     label: "Patient Name"
@@ -60,7 +60,7 @@ optional_properties:
     label: "Patient Cell"
     description: "Cell number. Useful for texting if appropriate."
 
-# LEGACY: file processing pipeline — not used by review UI
+# LEGACY: file processing pipeline - not used by review UI
 user_review_required: true
 relocatable: false
 review_priority: 5

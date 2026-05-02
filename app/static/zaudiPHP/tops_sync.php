@@ -6,9 +6,9 @@
  * and push back verified data, ratings, and corrections.
  *
  * Actions:
- *   get_unverified  — return unverified/unrated rows from specified table
- *   update          — upsert rows into specified table
- *   delete          — remove rows from food_library by item_id
+ *   get_unverified  - return unverified/unrated rows from specified table
+ *   update          - upsert rows into specified table
+ *   delete          - remove rows from food_library by item_id
  *
  * Auth:    X-API-Key header (via auth.php)
  * Request: application/json  { "action": "...", "table": "...", ... }
@@ -36,7 +36,7 @@ function respond_error(string $message, int $code = 400): void {
     respond(['status' => 'error', 'message' => $message], $code);
 }
 
-// -- Field maps — defines what each table exposes via sync --------------------
+// -- Field maps - defines what each table exposes via sync --------------------
 
 function library_fields(): array {
     return [
@@ -85,8 +85,8 @@ try {
     // -------------------------------------------------------------------------
     // ACTION: get_unverified
     // Returns rows that need persona attention:
-    //   food_library — verified=0 OR iris_rating IS NULL
-    //   food_log     — iris_rating IS NULL
+    //   food_library - verified=0 OR mia_rating IS NULL
+    //   food_log     - mia_rating IS NULL
     // -------------------------------------------------------------------------
     if ($action === 'get_unverified') {
 
@@ -98,7 +98,7 @@ try {
             );
             $fields = library_fields();
         } else {
-            // food_log — entries awaiting Mia rating
+            // food_log - entries awaiting Mia rating
             $stmt = $db->query(
                 "SELECT * FROM food_log
                  WHERE mia_rating IS NULL
@@ -121,7 +121,7 @@ try {
     // -------------------------------------------------------------------------
     // ACTION: update
     // Upserts rows into the specified table.
-    // Only fields defined in the field map are accepted — unknown fields ignored.
+    // Only fields defined in the field map are accepted - unknown fields ignored.
     // synced_at is always set to NOW() on update.
     // -------------------------------------------------------------------------
     if ($action === 'update') {
@@ -170,36 +170,24 @@ try {
             }
 
         } else {
-            // food_log — INSERT ... ON DUPLICATE KEY UPDATE (handles new + existing rows)
-            $sql = "INSERT INTO food_log
-                        (log_id, logged_at, category, venue, item,
-                         portion_pct, est_calories, mia_rating, daily_balance, notes, synced_at)
-                    VALUES
-                        (:log_id, :logged_at, :category, :venue, :item,
-                         :portion_pct, :est_calories, :mia_rating, :daily_balance, :notes, NOW())
-                    AS new_row
-                    ON DUPLICATE KEY UPDATE
-                        est_calories  = new_row.est_calories,
-                        mia_rating    = new_row.mia_rating,
-                        daily_balance = new_row.daily_balance,
-                        synced_at     = NOW()";
+            // food_log - garden can update est_calories, mia_rating, daily_balance
+            $sql = "UPDATE food_log SET
+                        est_calories  = :est_calories,
+                        mia_rating    = :mia_rating,
+                        daily_balance = :daily_balance,
+                        synced_at     = NOW()
+                    WHERE log_id = :log_id";
 
             $stmt = $db->prepare($sql);
             foreach ($items as $item) {
                 if (empty($item['log_id'])) continue;
                 $stmt->execute([
                     ':log_id'       => $item['log_id'],
-                    ':logged_at'    => $item['logged_at']     ?? null,
-                    ':category'     => $item['category']      ?? null,
-                    ':venue'        => $item['venue']         ?? null,
-                    ':item'         => $item['item']          ?? null,
-                    ':portion_pct'  => $item['portion_pct']   ?? 100,
                     ':est_calories' => $item['est_calories']  ?? null,
                     ':mia_rating'   => $item['mia_rating']    ?? null,
                     ':daily_balance'=> $item['daily_balance'] ?? null,
-                    ':notes'        => $item['notes']         ?? null,
                 ]);
-                $upserted += $stmt->rowCount();
+                $upserted++;
             }
         }
 
@@ -214,12 +202,12 @@ try {
     // -------------------------------------------------------------------------
     // ACTION: delete
     // Removes rows from food_library by item_id.
-    // food_log deletions are not permitted — log is append-only.
+    // food_log deletions are not permitted - log is append-only.
     // -------------------------------------------------------------------------
     if ($action === 'delete') {
 
         if ($table !== 'food_library') {
-            respond_error('delete is only permitted on food_library — food_log is append-only');
+            respond_error('delete is only permitted on food_library - food_log is append-only');
         }
 
         $item_ids = $body['item_ids'] ?? [];

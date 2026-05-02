@@ -1,5 +1,5 @@
-# MyBrain — Terms and Vocabulary
-# Status: Formation — actively evolving
+# MyBrain - Terms and Vocabulary
+# Status: Formation - actively evolving
 # Updated: 2026-03-18 by Rex
 # Home: app/chats/ until stable, then app/planning/
 
@@ -15,7 +15,7 @@ When a term appears below, use it as defined. When a new term earns a definition
 ## Core Terms
 
 ### Pin (note term Pin is overloaded and context sensitive. See calendar pin, yaml pin, etc)
-A Pip-formatted YAML file. Structured capture of raw input — a letter, a ramble,
+A Pip-formatted YAML file. Structured capture of raw input - a letter, a ramble,
 a photo, a todo idea. The output of Pip's work. Not a todo. Not a node. A seed.
 Lives in incoming until processed. Becomes something else downstream.
 
@@ -72,7 +72,7 @@ Prompts ingestion. Doesn't owe you anything afterward.
 
 ### Discovery
 The pipeline action that finds files matching an MFN's patterns and creates FileNodes.
-Must include patterns from the MFN — empty patterns = no matches.
+Must include patterns from the MFN - empty patterns = no matches.
 
 ---
 
@@ -84,7 +84,7 @@ Pins are the output of Meta. Drop them in incoming when not Meta.
 Usage: "We are Meta" = current session is design-only.
 
 ### Channel
-Who surfaced a todo — not who owns the underlying intent.
+Who surfaced a todo - not who owns the underlying intent.
 Owner is always the ultimate source of all todos.
 Channels: Rex (MADE_TODO), Vera (implied), Pip (source_pin property).
 
@@ -118,8 +118,8 @@ Used by the logging facility to track call patterns.
 
 ### Reason Parameter
 A string passed by the calling persona at runtime documenting *why* this call was made.
-Not baked into the function — comes from context. Logged for post-analysis.
-Example: `reason="session.open — inbox check before triage"`
+Not baked into the function - comes from context. Logged for post-analysis.
+Example: `reason="session.open - inbox check before triage"`
 Empty or absent = call suppressed from log.
 
 ### Higher-Order Bot
@@ -129,11 +129,11 @@ Candidate for creation when the log reveals a persona always calls A → B → C
 
 ### Reason Vocabulary (emerging conventions)
 Prefix reason strings for pattern matching:
-  session.open      — called at start of session
-  post.assign       — called after an assignment to verify
-  verify            — checking state before action
-  triage.friction   — surfacing stalled items
-  routine.morning   — part of morning triage chain
+  session.open      - called at start of session
+  post.assign       - called after an assignment to verify
+  verify            - checking state before action
+  triage.friction   - surfacing stalled items
+  routine.morning   - part of morning triage chain
 
 ---
 
@@ -155,9 +155,9 @@ Date first. Type second. Slug is lowercase, underscores, descriptive but short.
 | `pin` | incoming folders | Pip-formatted YAML capture |
 
 ### Notes
-- `chat-` prefix is legacy — was redundant when chats/ held only summaries. Now retired.
+- `chat-` prefix is legacy - was redundant when chats/ held only summaries. Now retired.
 - Existing files with `chat-` prefix are grandfathered. Rename on next meaningful edit.
-- `ping.md` in chats/ is a utility file — no convention needed.
+- `ping.md` in chats/ is a utility file - no convention needed.
 - Planning files with date at wrong end or .txt extension are legacy, assess and retire.
 
 ---
@@ -166,11 +166,11 @@ Date first. Type second. Slug is lowercase, underscores, descriptive but short.
 
 | Folder | Purpose |
 |---|---|
-| `app/chats/` | Runtime context — personas, summaries, formation docs |
-| `app/planning/` | Design context — proposals, specs, terms, feature requests |
+| `app/chats/` | Runtime context - personas, summaries, formation docs |
+| `app/planning/` | Design context - proposals, specs, terms, feature requests |
 | `app/Schema/` | MFN and GFN YAML definitions |
-| `E:\_Processing\incoming\` | Pin landing zone — watcher monitors |
+| `E:\_Processing\incoming\` | Pin landing zone - watcher monitors |
 | `C:\Users\termi\Dropbox\Incoming` | Dropbox pin landing zone |
-| `C:\Users\termi\Dropbox\Saves\` | Primary saves — all discovered |
-| `E:\BusinessCards\` | Garden — BusinessCard files |
-| `E:\R2Hope\` | Garden — R2HOdo files |
+| `C:\Users\termi\Dropbox\Saves\` | Primary saves - all discovered |
+| `E:\BusinessCards\` | Garden - BusinessCard files |
+| `E:\R2Hope\` | Garden - R2HOdo files |

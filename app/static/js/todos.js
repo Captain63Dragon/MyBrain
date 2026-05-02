@@ -58,7 +58,7 @@
                 return a.due.localeCompare(b.due);
             });
         }
-        // Any policy_id sort mode — sort by score DESC
+        // Any policy_id sort mode - sort by score DESC
         if (mode.startsWith('policy:')) {
             return copy.sort((a, b) => (b.score || 0) - (a.score || 0));
         }
@@ -82,12 +82,12 @@
 
     function priorityBadge(p) {
         const color = PRIORITY_COLORS[p] || '#888';
-        return `<span style="color:${color}; font-weight:600; font-size:12px; text-transform:uppercase;">${p || '—'}</span>`;
+        return `<span style="color:${color}; font-weight:600; font-size:12px; text-transform:uppercase;">${p || '-'}</span>`;
     }
 
     function statusBadge(s) {
         const color = STATUS_COLORS[s] || '#888';
-        return `<span style="background:${color}; color:white; padding:2px 7px; border-radius:10px; font-size:11px;">${s || '—'}</span>`;
+        return `<span style="background:${color}; color:white; padding:2px 7px; border-radius:10px; font-size:11px;">${s || '-'}</span>`;
     }
 
     function truncate(str, max) {
@@ -95,7 +95,7 @@
     }
 
     function scoreDisplay(score, nudge) {
-        if (score === null || score === undefined) return '—';
+        if (score === null || score === undefined) return '-';
         const color = nudge ? '#e53935' : '#888';
         const flag  = nudge ? ' ⚠' : '';
         return `<span style="font-size:12px; color:${color}; font-weight:${nudge ? 600 : 400};">${score}${flag}</span>`;
@@ -113,7 +113,7 @@
             tr.innerHTML = `
                 <td class="select-col"><input type="checkbox" class="record-checkbox"></td>
                 <td class="description" title="${todo.description || ''}">${truncate(todo.description || '', 130)}</td>
-                <td style="font-size:12px; color:#555;">${todo.owner || '—'}</td>
+                <td style="font-size:12px; color:#555;">${todo.owner || '-'}</td>
                 <td>${priorityBadge(todo.priority)}</td>
                 <td>${statusBadge(todo.status)}</td>
                 <td>${friction}</td>
@@ -299,7 +299,7 @@
         const expectedKey = oldOwner === 'user' ? 'handle' : 'name';
         const expectedVal = oldOwner === 'user' ? 'owner'  : oldOwner;
         if (src[expectedKey] !== expectedVal) {
-            return { error: `ASSIGNED source mismatch — expected ${expectedKey}=${expectedVal}, found ${JSON.stringify(src)}` };
+            return { error: `ASSIGNED source mismatch - expected ${expectedKey}=${expectedVal}, found ${JSON.stringify(src)}` };
         }
 
         const oldNode = resolveOwnerNode(oldOwner);

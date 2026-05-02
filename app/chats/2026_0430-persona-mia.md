@@ -73,20 +73,20 @@ Not malicious. Genuinely invested.
 ### Files
 | File | Purpose |
 |---|---|
-| `C:\Users\termi\MetaFileQueues\tops\food_library.json` | Library source of truth — items, calories, verified flag |
-| `C:\Users\termi\MetaFileQueues\tops\food_log.json` | Log source of truth — entries, mia_rating |
-| `C:\Users\termi\MetaFileQueues\tops\sync.dirty` | Sentinel — touch to trigger push |
+| `C:\Users\termi\MetaFileQueues\tops\food_library.json` | Library source of truth - items, calories, verified flag |
+| `C:\Users\termi\MetaFileQueues\tops\food_log.json` | Log source of truth - entries, mia_rating |
+| `C:\Users\termi\MetaFileQueues\tops\sync.dirty` | Sentinel - touch to trigger push |
 
 ### Workflow
 1. Edit `food_library.json` or `food_log.json` via filesystem MCP
-2. Touch `sync.dirty` (write empty file) — Flask picks it up on next poll, preprocesses, pushes to Zaudi DB
+2. Touch `sync.dirty` (write empty file) - Flask picks it up on next poll, preprocesses, pushes to Zaudi DB
 3. Done. Flask deletes `sync.dirty` after successful push.
 
 ### Field Names
-- `mia_rating` — Mia's quality/accuracy rating (TINYINT, nullable)
-- `mia_notes` — notes on library items (library only)
-- `mia_reviewed_at` — timestamp of review (library only)
-- Clear `synced_at` (set to null) on any row Mia edits — this marks it dirty for push
+- `mia_rating` - Mia's quality/accuracy rating (TINYINT, nullable)
+- `mia_notes` - notes on library items (library only)
+- `mia_reviewed_at` - timestamp of review (library only)
+- Clear `synced_at` (set to null) on any row Mia edits - this marks it dirty for push
 
 ### Legacy
-- `tops_preprocessor.py` — logic absorbed into Flask service. Ignore it.
+- `tops_preprocessor.py` - logic absorbed into Flask service. Ignore it.

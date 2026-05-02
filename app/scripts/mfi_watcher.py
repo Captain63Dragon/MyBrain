@@ -1,5 +1,5 @@
 """
-mfi_watcher.py — Windows-side MFI instruction processor.
+mfi_watcher.py - Windows-side MFI instruction processor.
 
 Watches pending/ for .mfi files, claims them, executes actions,
 writes results to completed/.
@@ -8,7 +8,7 @@ Usage:
     python -m app.scripts.mfi_watcher           # process all pending, exit
     python -m app.scripts.mfi_watcher --watch   # loop continuously
 
-Zero container dependencies — stdlib, yaml, pathlib only.
+Zero container dependencies - stdlib, yaml, pathlib only.
 """
 
 import re
@@ -50,7 +50,7 @@ def _make_result(cls, **kwargs):
 
 
 # ---------------------------------------------------------------------------
-# Filename parsing — extract what the filename gives for free
+# Filename parsing - extract what the filename gives for free
 # ---------------------------------------------------------------------------
 
 def parse_filename(filename: str, mask_matched: str) -> dict:
@@ -83,7 +83,7 @@ def handle_copy(mfi: CopyMFI) -> CopyResultMFI:
     """
     Copy a file from source to target.
     Returns a CopyResultMFI with success/failure details.
-    Intent is cargo — passed through for Flask result processor.
+    Intent is cargo - passed through for Flask result processor.
     """
     source = Path(mfi.source)
     target = Path(mfi.target)
@@ -175,7 +175,7 @@ def handle_discovery(mfi: DiscoveryMFI) -> DiscoveryResultMFI:
 def handle_move(mfi: MoveMFI) -> MoveResultMFI:
     """
     Move a file from source to target.
-    Intent is cargo — passed through for Flask result processor.
+    Intent is cargo - passed through for Flask result processor.
     """
     source = Path(mfi.source)
     target = Path(mfi.target)
@@ -241,7 +241,7 @@ def process_mfi(filepath: Path):
             
     except Exception as e:
         mark_failed(processing_file)
-        print(f"Failed: {filepath.name} — {e}")
+        print(f"Failed: {filepath.name} - {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +269,7 @@ def run(watch: bool = False, interval: int = 10):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='MFI Watcher — process pending MFI instructions')
+    parser = argparse.ArgumentParser(description='MFI Watcher - process pending MFI instructions')
     parser.add_argument('--watch', action='store_true', help='Loop continuously, polling for new MFI files')
     parser.add_argument('--interval', type=int, default=10, help='Poll interval in seconds (default: 10)')
     args = parser.parse_args()

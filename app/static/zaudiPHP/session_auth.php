@@ -1,5 +1,5 @@
 <?php
-// session_auth.php — Session gate for browser-facing pages.
+// session_auth.php - Session gate for browser-facing pages.
 // Include at the top of any page that requires a logged-in session.
 // Redirects to login.php if no valid session found.
 

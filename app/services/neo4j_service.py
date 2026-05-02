@@ -37,14 +37,14 @@ def ensure_filenode_constraint(session):
 
 # This is the controlled exception to the sessions-in-service rule.
 # Bot layer calls get_session() to obtain a session context manager.
-# Session lifecycle (open/close) remains in neo4j_service — bots just request one.
-# Routes and services should NOT call get_session() — they use their own
+# Session lifecycle (open/close) remains in neo4j_service - bots just request one.
+# Routes and services should NOT call get_session() - they use their own
 # with neo4j.get_session() as session: blocks directly.
 def get_session():
     """
     Provide a Neo4j session context manager to the bot layer.
     Controlled exception to the sessions-in-neo4j_service rule.
-    Bot layer only — do not call from routes or other services.
+    Bot layer only - do not call from routes or other services.
 
     Usage in bots:
         _owned = session is None
@@ -87,15 +87,15 @@ def ensure_mfn_constraint(session):
 def serialize_mfn_node(mfn):
     """
     Serialize a loaded MFN yaml dict into flat Neo4j-compatible properties.
-    core_properties and optional_properties are dicts — serialize as JSON strings.
-    system_properties is a list — stays as native Neo4j list.
+    core_properties and optional_properties are dicts - serialize as JSON strings.
+    system_properties is a list - stays as native Neo4j list.
     Legacy/pipeline fields included as-is with fallback serialization.
     """
     json_fields = {
         'core_properties', 'optional_properties',
         'remove_source', 'system_properties'
     }
-    # system_properties is a list — Neo4j can store it natively
+    # system_properties is a list - Neo4j can store it natively
     list_fields = {
         'system_properties'
     }
@@ -167,7 +167,7 @@ def create_node( session, label, node):
 def create_nodes_with_relationships(session, label: str, nodes: list):
     for n in nodes:
         related = n.pop('_related', [])
-        # DEBUG print(f"[import] {n.get('FILE-NODE-id')} — related: {len(related)}")        
+        # DEBUG print(f"[import] {n.get('FILE-NODE-id')} - related: {len(related)}")        
         # create master node
         create_nodes(session, label, [n])
         
@@ -538,7 +538,7 @@ def process_discovery_results() -> dict:
                 # DEBUG print(f"isinstance check: {isinstance(mfi, DiscoveryResultMFI)}")
 
                 if not isinstance(mfi, DiscoveryResultMFI):
-                    continue                    # not ours — leave it
+                    continue                    # not ours - leave it
 
                 label_result = session.run("""
                     MATCH (mfn:MetaFileNode {`MFN-id`: $mfn_id})
@@ -574,7 +574,7 @@ def process_discovery_results() -> dict:
                         """, filepath=file_entry['filepath'])
 
                         if result.single():
-                            # DEBUG print(f"[discovery] INSITU — skipping: {node_id}")
+                            # DEBUG print(f"[discovery] INSITU - skipping: {node_id}")
                             dispatch_summary.setdefault('insitu', []).append(node_id)
                             continue
 
@@ -598,13 +598,13 @@ def process_discovery_results() -> dict:
                             # DEBUG print(f"[discovery] CREATED: {node_id}")
 
                     except Exception as e:
-                        print(f"[discovery] ERROR: {file_entry.get('filepath')} — {e}")
+                        print(f"[discovery] ERROR: {file_entry.get('filepath')} - {e}")
                         dispatch_summary['errors'].append({
                             'filepath': file_entry.get('filepath', 'unknown'),
                             'error':    str(e)
                         })
 
-                # ── OSResult — after all file work, before unlink ─────────────
+                # ── OSResult - after all file work, before unlink ─────────────
                 status = 'failure(s)' if dispatch_summary.get('errors') else 'completed'
                 session.run("""
                     MATCH (d:Dispatch {`mfi-id`: $source_mfi_id})
@@ -642,7 +642,7 @@ def process_discovery_results() -> dict:
                     'errors':        len(dispatch_summary.get('errors', []))
                 })
 
-                mfi_path.unlink()               # after graph work — no ghost state
+                mfi_path.unlink()               # after graph work - no ghost state
                 summary['processed'] += 1
 
             except Exception as e:
@@ -658,9 +658,9 @@ def process_copy_results() -> dict:
     """
     Read completed/ folder, process copy_result MFI files.
     Branches on intent:
-        insitu_copy   — update original filepath, create stub node, INSITU_COPY_OF
-        master_source — source is master, create secondary at target, COPY_OF
-        master_target — target is master, update master filepath, create secondary at source, COPY_OF
+        insitu_copy   - update original filepath, create stub node, INSITU_COPY_OF
+        master_source - source is master, create secondary at target, COPY_OF
+        master_target - target is master, update master filepath, create secondary at source, COPY_OF
     """
     completed = completed_path()
     if not completed.exists():
@@ -771,10 +771,10 @@ def process_copy_results() -> dict:
                     print(f"[copy] master_target: {mfi.node_id} → secondary: {created_node_id}")
 
                 else:
-                    print(f"[copy] Unknown intent: {mfi.intent} — skipping")
+                    print(f"[copy] Unknown intent: {mfi.intent} - skipping")
                     summary['errors'].append({'mfi': mfi_path.name, 'error': f"Unknown intent: {mfi.intent}"})
                     summary['processed'] += 1
-                    continue                    # no Dispatch to link — no OSResult
+                    continue                    # no Dispatch to link - no OSResult
 
                 write_os_result(session, mfi, status='completed', errors=[],
                                 created_node_id=created_node_id)
@@ -787,7 +787,7 @@ def process_copy_results() -> dict:
                 summary['processed'] += 1
                 
             except Exception as e:
-                print(f"[copy] ERROR: {mfi_path.name} — {e}")
+                print(f"[copy] ERROR: {mfi_path.name} - {e}")
                 summary['errors'].append({'file': mfi_path.name, 'error': str(e)})
 
     summary['status'] = 'ok'
@@ -797,8 +797,8 @@ def process_move_results() -> dict:
     """
     Read completed/ folder, process move_result MFI files.
     Branches on intent:
-        move    — update filepath on existing node
-        archive — update filepath + set archived flag
+        move    - update filepath on existing node
+        archive - update filepath + set archived flag
     """
     from app.shared.mfi_shared import (
         decode, completed_path, MoveResultMFI
@@ -843,7 +843,7 @@ def process_move_results() -> dict:
                     new_node_id = derive_file_node_id(mfi.target, '')
                     
                     if not checker(new_node_id):
-                        # collision — increment
+                        # collision - increment
                         new_node_id = suggest_secondary_id(new_node_id, checker)
                     
                     result = session.run("""
@@ -860,10 +860,10 @@ def process_move_results() -> dict:
                         RETURN count(n) AS matched
                     """, node_id=mfi.node_id, target=mfi.target)
                 else:
-                    print(f"[move] Unknown intent: {mfi.intent} — skipping")
+                    print(f"[move] Unknown intent: {mfi.intent} - skipping")
                     summary['errors'].append({'mfi': mfi_path.name, 'error': f"Unknown intent: {mfi.intent}"})
                     summary['processed'] += 1
-                    continue                    # no Dispatch to link — no OSResult
+                    continue                    # no Dispatch to link - no OSResult
 
                 matched = result.single()['matched']
                 if matched == 0:
@@ -882,7 +882,7 @@ def process_move_results() -> dict:
                 summary['processed'] += 1
 
             except Exception as e:
-                print(f"[move] ERROR: {mfi_path.name} — {e}")
+                print(f"[move] ERROR: {mfi_path.name} - {e}")
                 # TODO: push_result here so error is flagged in SSE channel.
                 summary['errors'].append({'file': mfi_path.name, 'error': str(e)})
                 

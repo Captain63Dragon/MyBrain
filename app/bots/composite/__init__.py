@@ -1,6 +1,6 @@
 # app/bots/composite/__init__.py
 #
-# Composite bots — orchestrators that call other bots.
+# Composite bots - orchestrators that call other bots.
 # Log once at this level. Pass log_call=False to all constituent calls.
 # Declare REQUIRES as the union of all constituent REQUIRES.
 #
@@ -13,5 +13,5 @@
 #       r2hodo  = get_unsubmitted_r2hodo(session=session, log_call=False)
 #       ...
 #
-# Placeholder — first resident will be:
-#   vera.py  — vera.composite.daily_brief, vera.composite.session_start
+# Placeholder - first resident will be:
+#   vera.py  - vera.composite.daily_brief, vera.composite.session_start

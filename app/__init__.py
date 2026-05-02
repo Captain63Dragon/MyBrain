@@ -28,7 +28,7 @@ def create_app():
     from app.routes.filenode_routes import filenode_bp
     from app.routes.email_routes import email_bp
     from app.services.mfi_broker import start_mfi_broker
-    from app.scripts.mail_ingestor import start_mail_ingestor
+    from app.scripts.external_data_fetch import start_external_data_fetch
     # from app.routes.timeline_routes import timeline_bp
     app = Flask(__name__)
     app.config.from_object('config.Config')
@@ -52,5 +52,5 @@ def create_app():
         
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         start_mfi_broker()
-        start_mail_ingestor(app)
+        start_external_data_fetch(app)
     return app

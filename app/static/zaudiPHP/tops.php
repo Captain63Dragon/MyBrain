@@ -65,9 +65,9 @@ function category_label_from_slug(string $slug): string {
         'restaurant'     => 'Restaurant',
         'snack'          => 'Snack',
         'breakfast'      => 'Breakfast',
-        'breakfast-home' => 'Breakfast — Home',
-        'lunch-home'     => 'Lunch — Home',
-        'dinner-home'    => 'Dinner — Home',
+        'breakfast-home' => 'Breakfast - Home',
+        'lunch-home'     => 'Lunch - Home',
+        'dinner-home'    => 'Dinner - Home',
         'eat-out'        => 'Eat Out',
         'cheat'          => 'Cheat Day',
     ];

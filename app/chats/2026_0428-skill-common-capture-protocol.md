@@ -53,11 +53,11 @@ Subject: [note] <title>
 
 Pip ver: 1.0 | YYYY-MM-DD | source: <session|gmail|mobile>
 
-summary: <One line — what is this about?>
+summary: <One line - what is this about?>
 context: <Where did this come from? What prompted it?>
-url: <if applicable — omit if not>
+url: <if applicable - omit if not>
 body:
-<Freeform content — prose, bullets, whatever>
+<Freeform content - prose, bullets, whatever>
 ```
 
 ### [idea] Template
@@ -66,18 +66,18 @@ Subject: [idea] <title>
 
 Pip ver: 1.0 | YYYY-MM-DD | source: <session|gmail|mobile>
 
-summary: <One line — what is this pointing at?>
+summary: <One line - what is this pointing at?>
 spark: <What triggered this? Article, session, observation, conversation?>
 potential: <What could this become or enable?>
-connects_to: <Existing node, project, or idea — or omit>
+connects_to: <Existing node, project, or idea - or omit>
 status: open
 priority: high | medium | low
 owner: <persona or "user">
 tags: <comma-separated>
 body:
-<Freeform — the full thought, the excitement, the thread to pull>
+<Freeform - the full thought, the excitement, the thread to pull>
 ```
-> ⚠️ `spark`, `potential`, `connects_to` — parser update pending as of 2026-04-25.
+> ⚠️ `spark`, `potential`, `connects_to` - parser update pending as of 2026-04-25.
 
 ### [feature request] Template
 ```
@@ -88,7 +88,7 @@ Pip ver: 1.0 | YYYY-MM-DD | source: <session|gmail|mobile>
 summary: <What should exist that doesn't? One clear sentence.>
 status: open
 priority: high | medium | low
-pain_point: <Cost or friction of not having this — or "none">
+pain_point: <Cost or friction of not having this - or "none">
 problem: <What breaks or goes uncaptured without it?>
 proposed: <What should the system do? Key behaviours.>
 owners: <Persona, default: "user">
@@ -106,7 +106,7 @@ notes: <Observations, open questions>
 
 ### Rules
 - Drop in `E:\_Processing\incoming\`
-- Any field you invent may be lost — put unknowns in `description`
+- Any field you invent may be lost - put unknowns in `description`
 - Pin types and field schemas: see Pip persona
 
 ---

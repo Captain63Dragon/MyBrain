@@ -1,6 +1,6 @@
 # app/bots/bot_context.py
 #
-# BotContext — environment awareness and capability gating.
+# BotContext - environment awareness and capability gating.
 #
 # Every bot declares what it REQUIRES. BotContext decides if those
 # capabilities are available before the bot attempts to run.
@@ -8,16 +8,16 @@
 # rather than discovering the gap mid-chain.
 #
 # Capability flags:
-#   'neo4j'   — Neo4j session available (requires MCP or direct bolt)
-#   'flask'   — Flask HTTP reachable (requires MCP + running container)
-#   'filesystem' — Filesystem MCP mounted and readable
+#   'neo4j'   - Neo4j session available (requires MCP or direct bolt)
+#   'flask'   - Flask HTTP reachable (requires MCP + running container)
+#   'filesystem' - Filesystem MCP mounted and readable
 #
 # Meta-safe bots declare REQUIRES = set() or only 'neo4j' if they
 # receive a session from a parent context that already confirmed capability.
 
 import requests
 
-# Flask ping endpoint — same as flask:ping MCP tool target
+# Flask ping endpoint - same as flask:ping MCP tool target
 FLASK_PING_URL = "http://localhost:5000/ping"
 FLASK_PING_TIMEOUT = 3  # seconds
 
@@ -47,14 +47,14 @@ class BotContext:
             if data.get('neo4j') == 'ok':
                 capabilities.add('neo4j')
         except Exception:
-            # Flask unreachable — Meta mode, no capabilities
+            # Flask unreachable - Meta mode, no capabilities
             pass
         return cls(capabilities)
 
     @classmethod
     def meta(cls) -> 'BotContext':
         """
-        Explicit Meta-safe context — no capabilities declared.
+        Explicit Meta-safe context - no capabilities declared.
         Use when calling from a session known to have no MCP.
         """
         return cls(set())
@@ -62,7 +62,7 @@ class BotContext:
     @classmethod
     def full(cls) -> 'BotContext':
         """
-        Full Desktop context — all capabilities assumed available.
+        Full Desktop context - all capabilities assumed available.
         Use when MCP has already been confirmed (e.g. after ping:ping).
         """
         return cls({'neo4j', 'flask', 'filesystem'})

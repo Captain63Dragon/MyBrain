@@ -3,7 +3,7 @@ email_routes.py (or add to base_routes.py)
 
 Endpoint: POST /email/extract-attachments
 Extracts attachments from a raw .eml in archive-raw/ to the attachments staging folder.
-Calls mail_service.extract_attachments() — no duplication.
+Calls mail_service.extract_attachments() - no duplication.
 
 curl example:
     curl -s -X POST http://localhost:5000/email/extract-attachments \

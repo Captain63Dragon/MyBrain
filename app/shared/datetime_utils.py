@@ -26,7 +26,7 @@ Conversion targets:
     to_display() → Human-readable local string     (NOT TESTED)
     to_python()  → Python datetime object          (NOT TESTED)
 
-All public functions return None on failure — callers should handle gracefully.
+All public functions return None on failure - callers should handle gracefully.
 """
 
 import re
@@ -37,7 +37,7 @@ from datetime import datetime, timezone
 def _parse_any(value) -> datetime | None:
     """
     Parse any timestamp Vera might produce into a UTC-aware Python datetime.
-    Internal use only — call the to_*() converters instead.
+    Internal use only - call the to_*() converters instead.
     Returns None if unparseable.
     """
     if value is None:
@@ -64,7 +64,7 @@ def _parse_any(value) -> datetime | None:
     # Replace space separator with T
     s = re.sub(r'^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})', r'\1T\2', s)
 
-    # Date only — append midnight UTC
+    # Date only - append midnight UTC
     if re.match(r'^\d{4}-\d{2}-\d{2}$', s):
         s = s + 'T00:00:00+00:00'
 
@@ -109,7 +109,7 @@ def to_neo4j(value) -> str | None:
     Target: Neo4j datetime() compatible ISO 8601 with explicit offset
     Example: "2026-03-27T22:02:20+00:00"
 
-    TESTED ✓ — Claude → Neo4j path verified 2026-04-03
+    TESTED ✓ - Claude → Neo4j path verified 2026-04-03
     """
     dt = _parse_any(value)
     if dt is None:
@@ -123,7 +123,7 @@ def to_gcal(value) -> str | None:
     Target: Google Calendar RFC 3339 format
     Example: "2026-03-27T22:02:20+00:00"
 
-    NOT TESTED — RFC 3339 and Neo4j ISO formats are structurally identical
+    NOT TESTED - RFC 3339 and Neo4j ISO formats are structurally identical
     but GCal may have additional requirements (e.g. timeZone field handling).
     Verify before relying on this in production.
     """
@@ -139,7 +139,7 @@ def to_display(value, tz=None) -> str | None:
     Target: Human-readable local string
     Example: "Wednesday, April 3, 2026 4:19 PM MDT"
 
-    NOT TESTED — tz parameter handling and locale formatting unverified.
+    NOT TESTED - tz parameter handling and locale formatting unverified.
     tz: a datetime.timezone or pytz/zoneinfo timezone object; defaults to UTC.
     """
     dt = _parse_any(value)
@@ -158,6 +158,6 @@ def to_python(value) -> datetime | None:
     Source: any format (see module docstring)
     Target: Python timezone-aware datetime object
 
-    NOT TESTED — confirm tzinfo preservation for downstream consumers.
+    NOT TESTED - confirm tzinfo preservation for downstream consumers.
     """
     return _parse_any(value)

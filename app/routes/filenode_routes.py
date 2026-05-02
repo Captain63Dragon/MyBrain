@@ -1,5 +1,5 @@
 # app/routes/filenode_routes.py
-# Generic FileNode query route — MFN-agnostic.
+# Generic FileNode query route - MFN-agnostic.
 # Handles review UI queries for any FileNode type (BusinessCard, R2HOdo, etc.)
 # Dispatch and process remain in their own blueprint (buscard_routes, r2hodo_routes).
 

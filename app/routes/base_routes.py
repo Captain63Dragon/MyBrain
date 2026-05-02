@@ -91,7 +91,7 @@ def vera_ideas_pending():
 
 @base_bp.route('/sync/zaudi/todos', methods=['POST'])
 def sync_zaudi_todos():
-    """Run full Zaudi todo sync cycle — ingest unsynced + push Neo4j snapshot."""
+    """Run full Zaudi todo sync cycle - ingest unsynced + push Neo4j snapshot."""
     from app.services.api_service import run_sync_cycle
 
     data   = request.get_json() or {}

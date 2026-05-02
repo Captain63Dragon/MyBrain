@@ -164,11 +164,11 @@ document.addEventListener('DOMContentLoaded', function() {
         output.innerHTML = '';
         status.textContent = 'Starting...';
 
-        // Step 1 — kick off the background task
+        // Step 1 - kick off the background task
         const res = await fetch('/sse/test-start', { method: 'POST' });
         const { stream_id } = await res.json();
 
-        // Step 2 — open the stream
+        // Step 2 - open the stream
         status.textContent = 'Running...';
         const source = new EventSource(`/sse/test-stream/${stream_id}`);
 
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (event.data === '__error__') {
-                status.textContent = 'Error — stream not found.';
+                status.textContent = 'Error - stream not found.';
                 source.close();
                 return;
             }

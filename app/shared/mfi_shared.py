@@ -1,8 +1,8 @@
 """
-mfi_service.py — Meta File Instruction messaging layer.
+mfi_service.py - Meta File Instruction messaging layer.
 
 Shared by both the Flask/container side and the Windows host scripts.
-Zero framework dependencies — stdlib and yaml only.
+Zero framework dependencies - stdlib and yaml only.
 
 Folder convention (set via MFI_PATH environment variable):
     pending/      UI out-box,     Windows in-box
@@ -10,8 +10,8 @@ Folder convention (set via MFI_PATH environment variable):
     completed/    Windows out-box, UI in-box
 
 File convention:
-    *.mft  — being written, ignored by both sides
-    *.mfi  — complete, ready to process
+    *.mft  - being written, ignored by both sides
+    *.mfi  - complete, ready to process
     
 Filename prefix determines action type:
     discovery_YYYYMMDD_NNN.mfi
@@ -29,7 +29,7 @@ from typing import Optional
 
 
 # ---------------------------------------------------------------------------
-# Path resolution — works on both sides of the divide
+# Path resolution - works on both sides of the divide
 # ---------------------------------------------------------------------------
 
 def get_mfi_root() -> Path:
@@ -64,7 +64,7 @@ def tops_path() -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Base and action-specific dataclasses — data only, no logic
+# Base and action-specific dataclasses - data only, no logic
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -92,7 +92,7 @@ class DiscoveryMFI(MFIBase):
     
 @dataclass
 class DiscoveryResultMFI(MFIBase):
-    """Result of a directory scan — one entry per matched file."""
+    """Result of a directory scan - one entry per matched file."""
     action:        str = "scan_directory_result"
     source_mfi_id: str = ""
     mfn_id:        str = ""
@@ -144,7 +144,7 @@ class MoveResultMFI(MFIBase):
     error:         str = ""
     
 # ---------------------------------------------------------------------------
-# Registry — prefix to class mapping, extend here for new action types
+# Registry - prefix to class mapping, extend here for new action types
 # ---------------------------------------------------------------------------
 
 ACTION_REGISTRY = {
@@ -170,7 +170,7 @@ def generate_mfi_id(action: str) -> str:
     return f"{action}_{timestamp}"
 
 # ---------------------------------------------------------------------------
-# Encode / decode — outside the classes, operate on them
+# Encode / decode - outside the classes, operate on them
 # ---------------------------------------------------------------------------
 
 def encode(mfi: MFIBase) -> str:
@@ -184,7 +184,7 @@ def decode(filepath: str) -> MFIBase:
     Routes by filename prefix via ACTION_REGISTRY.
     """
     p = Path(filepath)
-    # Strip the timestamp suffix — everything before _YYYY is the action name
+    # Strip the timestamp suffix - everything before _YYYY is the action name
     stem = p.stem
     # Find where the date starts: _YYYY pattern
     match = re.search(r'_\d{4}_', stem)
@@ -201,13 +201,13 @@ def decode(filepath: str) -> MFIBase:
 
 
 # ---------------------------------------------------------------------------
-# File operations — atomic write, folder transitions
+# File operations - atomic write, folder transitions
 # ---------------------------------------------------------------------------
 
 def write_mfi(mfi: MFIBase, folder: Optional[Path] = None) -> Path:
     """
     Write an MFI to the pending folder atomically.
-    Writes as .mft first, renames to .mfi — both sides ignore .mft.
+    Writes as .mft first, renames to .mfi - both sides ignore .mft.
     Returns the final .mfi path.
     """
     if folder is None:

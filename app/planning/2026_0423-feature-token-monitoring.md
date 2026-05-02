@@ -7,9 +7,9 @@ Owner: Rex | Linked: todo-1776952427454
 
 ## 1. Problem Statement
 
-Every Anthropic API call re-transmits the full conversation context. As a session grows, input token cost compounds — not because individual exchanges are expensive, but because history accumulates silently. Without visibility into this growth, there is no basis for optimization decisions.
+Every Anthropic API call re-transmits the full conversation context. As a session grows, input token cost compounds - not because individual exchanges are expensive, but because history accumulates silently. Without visibility into this growth, there is no basis for optimization decisions.
 
-The original fuel consumption monitoring system was designed to track this. It stalled when Anthropic removed token count visibility from tool returns visible to Claude. That data was never gone — it was always present in the API response usage object. It simply stopped surfacing inside the conversation.
+The original fuel consumption monitoring system was designed to track this. It stalled when Anthropic removed token count visibility from tool returns visible to Claude. That data was never gone - it was always present in the API response usage object. It simply stopped surfacing inside the conversation.
 
 > The `/v1/messages/count_tokens` endpoint (introduced late 2024) and the `usage` object in every API response provide the ground truth. The gap was visibility, not availability.
 
@@ -52,10 +52,10 @@ Every Anthropic API response includes:
 }
 ```
 
-- `input_tokens` — full context size at that call
-- `output_tokens` — response size
-- `cache_creation_input_tokens` — tokens written to prompt cache (one-time cost)
-- `cache_read_input_tokens` — tokens served from cache (significantly cheaper)
+- `input_tokens` - full context size at that call
+- `output_tokens` - response size
+- `cache_creation_input_tokens` - tokens written to prompt cache (one-time cost)
+- `cache_read_input_tokens` - tokens served from cache (significantly cheaper)
 
 The MCP bridge (`mcp_flask_bridge.py`) sits in the call path. It can capture this object for every tool call without any bot author involvement.
 
@@ -67,7 +67,7 @@ POST https://api.anthropic.com/v1/messages/count_tokens
 Response: { "input_tokens": N }
 ```
 
-Useful for estimating cost before a heavy operation. Not required for post-call logging — the usage object provides actual counts after the fact.
+Useful for estimating cost before a heavy operation. Not required for post-call logging - the usage object provides actual counts after the fact.
 
 > `count_tokens` returns an estimate. Actual billed tokens may differ slightly. System-added tokens are not billed.
 
@@ -112,7 +112,7 @@ Extended thinking tokens accumulate as input history. Monitoring `input_tokens` 
 
 ### 5.2 Flail Detection
 
-Flail — a persona making multiple tool calls without clear direction — is expensive. Each call re-transmits the full context. A spike in per-turn `input_token` delta with low `output_tokens` is a flail signature.
+Flail - a persona making multiple tool calls without clear direction - is expensive. Each call re-transmits the full context. A spike in per-turn `input_token` delta with low `output_tokens` is a flail signature.
 
 Monitoring cost: flail costs extra tokens. The counter-argument is that monitoring enables better instruction quality and skill tuning, which reduces flail over time. Net positive.
 
@@ -150,9 +150,9 @@ No infrastructure change required. Observable immediately.
 | Log usage fields to bot_calls.log | Rex | todo-1776952427454 |
 | Update iris.analytics.measure.tokens for real data | Iris | New |
 | Session boundary tagging in log | Rex | New |
-| Iris analysis script v2 — token metrics | Iris | New |
+| Iris analysis script v2 - token metrics | Iris | New |
 | Add usage capture note to tool_use_guidelines | Iris | todo-1776950638956 |
 
 ---
 
-*MyBrain-2026 Internal Document | Iris | 2026-04-23 | Draft — pending Rex implementation*
+*MyBrain-2026 Internal Document | Iris | 2026-04-23 | Draft - pending Rex implementation*

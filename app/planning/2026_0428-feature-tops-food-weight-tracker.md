@@ -15,12 +15,12 @@ No low-friction entry point exists for daily food and weekly weigh-in data; Walt
 
 ## Page 1: Food Log (Landing Page)
 
-### Entry Flow — Category Wheel System
+### Entry Flow - Category Wheel System
 - **Wheel 1:** Category selector (Eat Out, Home Cook, Snack, etc.)
-- **Wheel 2:** Unlocks on W1 — Venue / Source (populated from history)
+- **Wheel 2:** Unlocks on W1 - Venue / Source (populated from history)
 - **Wheel 3:** Usual vs New
 - **Wheel 4:** Item selector (known menu items or free entry)
-- **Portion field:** Numeric free-entry (e.g. 90%, 150%) — no slider ceiling
+- **Portion field:** Numeric free-entry (e.g. 90%, 150%) - no slider ceiling
 - **Submit:** Returns AI-calculated nutrition panel
 
 ### Output Panel (per submission)
@@ -35,7 +35,7 @@ No low-friction entry point exists for daily food and weekly weigh-in data; Walt
 - Wheel 2 & 4 options populated from prior successful inputs
 
 ### Bottom Bar (Food Log page only)
-- Star/strike streak display — daily entry hits and misses
+- Star/strike streak display - daily entry hits and misses
 
 ---
 
@@ -46,7 +46,7 @@ No low-friction entry point exists for daily food and weekly weigh-in data; Walt
 
 ---
 
-## Page 3: Dashboard (Sub-page — utility link, not primary nav)
+## Page 3: Dashboard (Sub-page - utility link, not primary nav)
 - Daily snapshot: calories remaining, today's Iris rating, streak status
 - Weekly progress summary
 - Accessible via link styled like new_todo.php utility link pattern
@@ -67,9 +67,9 @@ No low-friction entry point exists for daily food and weekly weigh-in data; Walt
 - Download required in subsequent versions
 
 ## Owners
-- **Rex** — build, architecture
-- **Walter** — spreadsheet rollup layer
-- **Iris** — form UI, AI rating layer
+- **Rex** - build, architecture
+- **Walter** - spreadsheet rollup layer
+- **Iris** - form UI, AI rating layer
 
 ## Origin
 Designed in Iris meta-mode session 2026-04-28. Wheel UI pattern originated from user 'bathtub thought' design session.
